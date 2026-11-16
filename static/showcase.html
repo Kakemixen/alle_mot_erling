@@ -262,10 +262,11 @@
     });
 
     $("new-game").onclick = async () => {
-      const name = prompt("Who plays against everyone in the new game?", state ? state.game.oneName : "");
-      if (!name || !name.trim()) return;
+      // Starting over can't be undone, so check it wasn't a mis-click.
+      if (state && state.game.phase !== "final" &&
+          !confirm("Start a new game? The current game ends and everyone has to join again.")) return;
       try {
-        await api("/api/game", { method: "POST", body: { oneName: name.trim() } });
+        await api("/api/game", { method: "POST" });
       } catch (err) {
         return alert(err.message);
       }

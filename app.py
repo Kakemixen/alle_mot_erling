@@ -24,8 +24,8 @@ these phases (stored on the game row):
 Each question gives one point to whoever is closest to the correct answer:
 Erling, or the average of all team answers.
 
-"Erling" is the default name of the one playing against everyone; the host
-can pick someone else per game. In the code that player is called "one".
+Erling is always the one playing against everyone (SOLO_NAME). In the code
+that player is called "one".
 """
 import io
 import json
@@ -95,6 +95,7 @@ SEED_QUESTIONS = [
 ]
 
 PHASES = ("lobby_one", "lobby", "question", "reveal", "final")
+SOLO_NAME = "Erling"  # the one playing against everyone, in every game
 
 # Keeps curious players out of the host pages. Not real security: the default
 # is in the source code, and without HTTPS it is sent unencrypted.
@@ -191,7 +192,7 @@ def init_db():
         if db.execute("SELECT COUNT(*) FROM questions").fetchone()[0] == 0:
             db.executemany("INSERT INTO questions (text, answer, unit) VALUES (?, ?, ?)", SEED_QUESTIONS)
         if db.execute("SELECT COUNT(*) FROM games").fetchone()[0] == 0:
-            db.execute("INSERT INTO games (one_name, one_token) VALUES (?, ?)", ("Erling", new_token()))
+            db.execute("INSERT INTO games (one_name, one_token) VALUES (?, ?)", (SOLO_NAME, new_token()))
 
 
 def current_game():
@@ -301,12 +302,8 @@ def delete_question(qid):
 # ---------------------------------------------------------------- game control
 @app.post("/api/game")
 def new_game():
-    data = request.get_json(silent=True) or {}
-    name = str(data.get("oneName", "")).strip()[:40]
-    if not name:
-        abort(400, "Please enter a name")
     db = get_db()
-    db.execute("INSERT INTO games (one_name, one_token) VALUES (?, ?)", (name, new_token()))
+    db.execute("INSERT INTO games (one_name, one_token) VALUES (?, ?)", (SOLO_NAME, new_token()))
     db.commit()
     notifier.bump(game=True)
     return state()
