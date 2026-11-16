@@ -1,4 +1,5 @@
-"""Alle mod 1 – a small "everyone against one" quiz platform.
+"""Alle mot Erling – a small "everyone against one" quiz platform,
+inspired by the Danish TV show "Alle mod 1".
 
 Run locally:     python app.py   (then open http://localhost:5000)
 Run on a server: gunicorn -c gunicorn.conf.py app:app   (see README.md)
@@ -115,7 +116,7 @@ def require_host_password():
             and secrets.compare_digest(auth.password, HOST_PASSWORD)):
         return None
     return Response("The host password is required for this page.", 401,
-                    {"WWW-Authenticate": 'Basic realm="Alle mod 1 host", charset="UTF-8"'})
+                    {"WWW-Authenticate": 'Basic realm="Alle mot Erling host", charset="UTF-8"'})
 
 
 # ------------------------------------------------------------------ live updates

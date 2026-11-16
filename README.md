@@ -1,4 +1,4 @@
-# Alle mod 1
+# Alle mot Erling
 
 A small "everyone against one" quiz platform, inspired by the Danish TV show *Alle mod 1*.
 One player (the **1**) takes on all the teams. Every answer is a number, and each question

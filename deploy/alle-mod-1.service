@@ -6,7 +6,7 @@
 #   journalctl -u alle-mod-1 -f        # logs
 
 [Unit]
-Description=Alle mod 1 quiz
+Description=Alle mot Erling quiz
 After=network.target
 
 [Service]

@@ -45,9 +45,9 @@ header.top {
   display: inline-block;
   background: var(--accent);
   color: #fff;
-  border-radius: 50%;
-  width: 1.6em; height: 1.6em; line-height: 1.6em;
-  text-align: center;
+  border-radius: 999px;
+  padding: 0 .45em;
+  line-height: 1.6em;
   margin-left: 4px;
 }
 

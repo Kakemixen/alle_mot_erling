@@ -54,7 +54,7 @@ function renderHeader(active, { nav = true } = {}) {
   const header = document.createElement("header");
   header.className = "top";
   header.innerHTML = `
-    ${nav ? `<a class="logo" href="/">` : `<span class="logo">`}Alle mod <span class="one">1</span>${nav ? "</a>" : "</span>"}
+    ${nav ? `<a class="logo" href="/">` : `<span class="logo">`}Alle mot <span class="one">Erling</span>${nav ? "</a>" : "</span>"}
     ${nav ? `<nav>${links.map(([key, href, label]) =>
       `<a href="${href}" class="${key === active ? "active" : ""}">${label}</a>`).join("")}
     </nav>` : ""}`;
