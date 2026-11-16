@@ -272,8 +272,8 @@
       poll();
     };
 
-    poll();
-    setInterval(poll, 1000);
+    // Live updates: refresh when the server reports a change (max ~2x per second).
+    subscribe("all", poll, { minInterval: 500 });
   </script>
 </body>
 </html>

@@ -22,6 +22,7 @@ import os
 import secrets
 import socket
 import sqlite3
+import threading
 from urllib.parse import urlsplit
 
 import qrcode
@@ -80,6 +81,37 @@ SEED_QUESTIONS = [
 
 PHASES = ("lobby_one", "lobby", "question", "reveal", "final")
 LAST_REVEAL_STEP = 3
+
+
+# ------------------------------------------------------------------ live updates
+class Notifier:
+    """Wakes up clients waiting on /api/events when something changes.
+
+    Two counters: "game" changes when the game moves to another step (all
+    phones care), "all" changes on anything – also joins and answers (only
+    the showcase cares, for its live counters).
+
+    Lives in this process, so run the app as a single process.
+    """
+
+    def __init__(self):
+        self.cond = threading.Condition()
+        self.versions = {"game": 0, "all": 0}
+
+    def bump(self, game=False):
+        with self.cond:
+            self.versions["all"] += 1
+            if game:
+                self.versions["game"] += 1
+            self.cond.notify_all()
+
+    def wait(self, scope, seen, timeout):
+        with self.cond:
+            self.cond.wait_for(lambda: self.versions[scope] != seen, timeout)
+            return self.versions[scope]
+
+
+notifier = Notifier()
 
 
 # --------------------------------------------------------------------------- db
@@ -209,6 +241,7 @@ def create_question():
     db = get_db()
     cur = db.execute("INSERT INTO questions (text, answer, unit) VALUES (?, ?, ?)", (text, answer, unit))
     db.commit()
+    notifier.bump()
     row = db.execute("SELECT * FROM questions WHERE id = ?", (cur.lastrowid,)).fetchone()
     return jsonify(question_dict(row)), 201
 
@@ -218,6 +251,7 @@ def delete_question(qid):
     db = get_db()
     db.execute("DELETE FROM questions WHERE id = ?", (qid,))
     db.commit()
+    notifier.bump()
     return "", 204
 
 
@@ -231,6 +265,7 @@ def new_game():
     db = get_db()
     db.execute("INSERT INTO games (one_name, one_token) VALUES (?, ?)", (name, new_token()))
     db.commit()
+    notifier.bump(game=True)
     return state()
 
 
@@ -270,6 +305,7 @@ def next_step():
         (phase, idx, step, question_ids, game["id"]),
     )
     db.commit()
+    notifier.bump(game=True)
     return state()
 
 
@@ -283,6 +319,7 @@ def one_join():
     db = get_db()
     db.execute("UPDATE games SET one_joined = 1 WHERE id = ?", (game["id"],))
     db.commit()
+    notifier.bump()
     return jsonify({"ok": True, "oneName": game["one_name"]})
 
 
@@ -304,6 +341,7 @@ def join_team():
         db.commit()
     except sqlite3.IntegrityError:
         abort(409, "That team name is already taken")
+    notifier.bump()
     return jsonify({"name": name, "token": token}), 201
 
 
@@ -335,6 +373,7 @@ def submit_answer():
         (game["id"], questions[game["q_index"]]["id"], player, value),
     )
     db.commit()
+    notifier.bump()
     return jsonify({"ok": True, "value": value})
 
 
@@ -423,6 +462,30 @@ def state():
     })
 
 
+@app.get("/api/events")
+def events():
+    """Server-Sent Events: a long-lived response that gets a short message
+    whenever something changes, so clients only fetch /api/state when needed.
+    ?scope=game  – only game steps (phones);  default – everything (showcase)."""
+    scope = "game" if request.args.get("scope") == "game" else "all"
+
+    def stream():
+        seen = notifier.versions[scope]
+        # Tell the client to reconnect after 2 s if the connection drops, and
+        # send one message right away so it fetches the state after (re)connecting.
+        yield f"retry: 2000\ndata: {seen}\n\n"
+        while True:
+            version = notifier.wait(scope, seen, timeout=15)
+            if version == seen:
+                yield ": keep-alive\n\n"  # comment line; also detects closed connections
+            else:
+                seen = version
+                yield f"data: {version}\n\n"
+
+    return Response(stream(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 # ---------------------------------------------------------------- links / QR
 def public_base_url():
     """Base URL that phones can reach. If the host browses via localhost,
@@ -478,4 +541,5 @@ def index():
 init_db()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    # threaded: each open /api/events connection needs its own thread.
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True, threaded=True)

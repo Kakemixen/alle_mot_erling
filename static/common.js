@@ -59,3 +59,31 @@ function renderHeader(active) {
     </nav>`;
   document.body.prepend(header);
 }
+
+// Call `refresh` whenever the server says something changed, instead of
+// polling. Uses Server-Sent Events: one long-lived connection on which the
+// server sends a tiny message per change; the browser reconnects by itself.
+//   scope:       "game" = only game steps (phones), "all" = also joins/answers
+//   minInterval: at most one refresh per this many ms (bursts of answers)
+// A slow fallback refresh and a refresh when the tab becomes visible again
+// (e.g. a phone waking up) cover any missed messages.
+function subscribe(scope, refresh, { minInterval = 0, fallbackMs = 30000 } = {}) {
+  let timer = null, last = 0;
+  const trigger = () => {
+    if (timer) return; // a refresh is already scheduled and will see the change
+    const wait = Math.max(0, last + minInterval - Date.now());
+    timer = setTimeout(() => {
+      timer = null;
+      last = Date.now();
+      refresh();
+    }, wait);
+  };
+  if (window.EventSource) {
+    new EventSource(`/api/events?scope=${scope}`).onmessage = trigger;
+  } else {
+    fallbackMs = Math.min(fallbackMs, 2000); // very old browser: plain polling
+  }
+  setInterval(trigger, fallbackMs);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) trigger(); });
+  trigger();
+}

@@ -45,3 +45,20 @@ Databases from the first (multiple-choice) version are kept as `*_v1` tables and
 
 Note: the secret link keeps players from accidentally (or cheekily) playing as the 1, but there
 is no host login – anyone who knows the API could fetch the link or advance the game.
+
+## Live updates
+
+Clients don't poll. Each page keeps one Server-Sent Events connection (`/api/events`) open, and
+the server sends a tiny message when something changes; the page then fetches `/api/state` once.
+Phones only listen for game steps (Next / New game), so each phone makes about one request per
+step. The showcase also listens for joins and answers (for its live counters) and refreshes at
+most twice a second. A refresh every 30 s and when a tab becomes visible again covers anything missed.
+
+Things to know:
+
+* Run the app as **one process** (as `python app.py` does) – the change notifications live in memory.
+* Every open page holds one connection and, with the built-in server, one thread. That's fine for
+  a few hundred players.
+* Browsers allow only ~6 open connections per host name. When testing many teams as tabs in
+  **one** browser, tabs beyond that hang. Spread them over host names
+  (`localhost`, `127.0.0.1`, your LAN IP) or browsers. Real phones are not affected.

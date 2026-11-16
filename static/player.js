@@ -150,6 +150,7 @@ function startPlayer({ mode, oneToken }) {
   if (mode === "one" && oneToken) {
     api("/api/one/join", { method: "POST", body: { token: oneToken } }).catch(() => {});
   }
-  poll();
-  setInterval(poll, 1500);
+  // Phones only need to hear about game steps; their own answers come back
+  // in the response when they submit.
+  subscribe("game", poll);
 }
