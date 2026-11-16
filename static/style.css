@@ -237,3 +237,13 @@ body.showcase main.stage { max-width: 1200px; padding-bottom: 110px; }
   .controls { padding: 10px 16px; flex-wrap: wrap; }
   .summary { font-size: .9rem; }
 }
+
+/* anonymous team answers on the number line */
+.nl-marker { z-index: 2; }
+.nl-dot {
+  position: absolute; top: 50%; z-index: 1; --s: 0;
+  width: 12px; height: 12px; margin-left: -6px; margin-top: calc(-6px - var(--s) * 14px);
+  border-radius: 50%; background: var(--crowd); border: 2px solid var(--bg);
+  opacity: 0; transition: left .9s cubic-bezier(.2, .8, .2, 1), margin-top .6s, opacity .6s;
+}
+.nl-dot.shown { opacity: .7; }

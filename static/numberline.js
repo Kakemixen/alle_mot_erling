@@ -4,7 +4,8 @@
 //
 //   line.update(
 //     [{ key, value, label (HTML), cls, side: "top"|"bottom", row: 0|1 }],
-//     { from, to } | null      // highlighted range
+//     { from, to } | null,     // highlighted range
+//     [values]                 // optional small unlabeled dots (e.g. each team's answer)
 //   )
 
 class NumberLine {
@@ -15,10 +16,11 @@ class NumberLine {
     this.band = el.querySelector(".nl-band");
     this.markers = new Map();
     this.ticks = new Map();
+    this.dots = [];
   }
 
-  update(markers, band) {
-    const values = markers.map((m) => m.value);
+  update(markers, band, dots = []) {
+    const values = markers.map((m) => m.value).concat(dots);
     if (band) values.push(band.from, band.to);
     if (!values.length) return;
 
@@ -78,6 +80,26 @@ class NumberLine {
     for (const [key, el] of this.markers) {
       if (!keys.has(key)) { el.remove(); this.markers.delete(key); }
     }
+
+    // Dots: sorted, and stacked upwards when they would overlap.
+    const sorted = [...dots].sort((a, b) => a - b);
+    const width = this.el.clientWidth || 800;
+    const minGap = 14 / width; // ~ one dot width, as a fraction of the line
+    let groupStart = -Infinity, stack = 0;
+    sorted.forEach((v, i) => {
+      const x = (v - lo) / (hi - lo);
+      if (x - groupStart < minGap) stack++;
+      else { groupStart = x; stack = 0; }
+      let el = this.dots[i];
+      if (!el) {
+        el = this.appendFaded("nl-dot", "", pos(v));
+        this.dots[i] = el;
+      } else {
+        el.style.left = pos(v);
+      }
+      el.style.setProperty("--s", stack);
+    });
+    this.dots.splice(sorted.length).forEach((el) => el.remove());
   }
 
   appendFaded(cls, html, left) {

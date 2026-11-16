@@ -141,7 +141,7 @@
         markers.push({ key: "avg", value: c.average, cls: "crowd", side: "top", row: 1,
                        label: `Everyone (avg.)<br><b>${u(c.average)}</b>` });
       }
-      line.update(markers, band);
+      line.update(markers, band, step >= 3 ? c.teamValues : []);
 
       // The text below the line only changes per step – rebuild it then so
       // the fade-in animation runs once.
@@ -165,7 +165,9 @@
         facts.push(c.average === null
           ? `<div class="fact crowd">No team answered this one.</div>`
           : `<div class="fact crowd">Everyone's average: <b>${u(c.average)}</b> — ${u(c.averageDistance)} off
-               <span class="muted">(${c.teamAnswers} team${c.teamAnswers === 1 ? "" : "s"})</span></div>`);
+               <span class="muted">(${c.teamAnswers} team${c.teamAnswers === 1 ? "" : "s"}${c.teamAnswers > 1
+                 ? `, answers from ${u(c.teamValues[0])} to ${u(c.teamValues[c.teamValues.length - 1])}
+                    — each small dot is one team` : ""})</span></div>`);
         const verdict = {
           one: `🏆 Point to ${name}!`,
           crowd: "🏆 Point to everyone!",

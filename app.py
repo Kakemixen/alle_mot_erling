@@ -180,6 +180,7 @@ def question_result(game, q):
         "text": q["text"], "unit": q["unit"], "correct": correct,
         "one": one, "oneDistance": d_one,
         "average": avg, "averageDistance": d_crowd, "teamAnswers": len(team_values),
+        "teamValues": sorted(team_values),  # anonymous: values only, no team names
         "winner": winner,
     }
 
@@ -388,7 +389,8 @@ def state():
                 current.update(one=res["one"], oneDistance=res["oneDistance"])
             if step >= 3:
                 current.update(average=res["average"], averageDistance=res["averageDistance"],
-                               teamAnswers=res["teamAnswers"], winner=res["winner"])
+                               teamAnswers=res["teamAnswers"], teamValues=res["teamValues"],
+                               winner=res["winner"])
 
     # Who is asking? (phones pass their token so they can see their own answer)
     me = None
