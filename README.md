@@ -58,9 +58,34 @@ Recommended setup on a Linux server (examples in `deploy/`):
 * **nginx in front** with HTTPS (`deploy/nginx.conf`). It passes the live updates through
   unbuffered, encrypts the host login, and with HTTP/2 there's no per-browser connection limit.
 * **systemd** to start it on boot and restart on crashes (`deploy/alle-mot-erling.service`).
-* **Set `PUBLIC_URL`** to the address players use, e.g. `PUBLIC_URL=https://quiz.example.com`.
-  The QR codes are built from it. Without it they're built from the address the host's browser
-  used, which behind nginx or with HTTPS can come out wrong (e.g. `http://` or an internal IP).
+* **Set `PUBLIC_URL`** to the address players use, e.g. `PUBLIC_URL=https://quiz.example.com`
+  (in the systemd file), so the QR codes point to the right place – see below.
+
+### QR codes and links
+
+The showcase shows two QR codes, each with its link printed underneath:
+
+* **Teams:** `<base>/play.html`
+* **Erling:** `<base>/erling.html?token=…` – the token is a secret that changes with every
+  New game, so an Erling QR code or link from an earlier game stops working.
+
+The `<base>` address is chosen in this order (`public_base_url()` in `app.py`):
+
+1. **`PUBLIC_URL`**, if set – used exactly as given. On the server, set it in the
+   `Environment=PUBLIC_URL=…` line of `deploy/alle-mot-erling.service`, then
+   `sudo systemctl daemon-reload && sudo systemctl restart alle-mot-erling`.
+2. Otherwise **the address the showcase was opened with**. So the address you type for the
+   showcase decides where every phone goes: opening it via `http://192.168.1.20:5000` gives QR
+   codes for `http://192.168.1.20:5000/…`.
+3. If that address is `localhost`/`127.0.0.1`, **this machine's LAN IP** with the same port
+   instead – phones can't reach "localhost" (on a phone that means the phone itself).
+
+Behind nginx, step 2 would see the internal `127.0.0.1:8000` and step 3 would turn that into
+the server's IP with port 8000 over `http://` – not reachable for players. That's why
+`PUBLIC_URL` should be set on a server.
+
+**Check before players arrive:** open the showcase and read the link under the QR code – it's
+exactly what the phones will open. Scanning it with your own phone is the quickest test.
 
 ### Configuration
 
