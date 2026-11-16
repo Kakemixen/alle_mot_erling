@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alle mod 1</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <h1>Everyone against one</h1>
+    <p class="lead">One player takes on the whole crowd. Everyone answers the same questions —
+      can <strong id="one-name">the 1</strong> beat the average of everybody else?</p>
+
+    <div class="tiles">
+      <a class="card tile" href="/create.html">
+        <div class="big">✏️</div>
+        <h2>Create</h2>
+        <p class="muted">Write questions and mark the correct answer.</p>
+      </a>
+      <a class="card tile" href="/play.html">
+        <div class="big">📱</div>
+        <h2>Play</h2>
+        <p class="muted">Open on your phone, enter your name and answer the quiz.</p>
+      </a>
+      <a class="card tile" href="/results.html">
+        <div class="big">📺</div>
+        <h2>Results</h2>
+        <p class="muted">The big screen: questions, live answers and who won.</p>
+      </a>
+    </div>
+  </main>
+  <script src="/common.js"></script>
+  <script>
+    renderHeader("");
+    api("/api/game").then((g) => { document.getElementById("one-name").textContent = g.oneName; });
+  </script>
+</body>
+</html>

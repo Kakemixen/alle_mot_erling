@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create Questions</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <h1>Create questions</h1>
+    <p class="lead">Write a question, fill in the options and pick the correct one with the radio button.</p>
+
+    <form id="q-form" class="card">
+      <label for="q-text">Question</label>
+      <input type="text" id="q-text" placeholder="e.g. What is the highest point in Denmark?" required>
+
+      <label>Options <span class="muted">(select the correct one)</span></label>
+      <div id="options"></div>
+      <div class="toolbar" style="margin-top:12px">
+        <button type="button" class="secondary" id="add-option">+ Add option</button>
+        <span style="flex:1"></span>
+        <button type="submit">Save question</button>
+      </div>
+      <p class="error" id="form-error"></p>
+    </form>
+
+    <h2>Saved questions (<span id="q-count">0</span>)</h2>
+    <div id="q-list"></div>
+  </main>
+
+  <script src="/common.js"></script>
+  <script>
+    renderHeader("create");
+
+    const MIN_OPTIONS = 2, MAX_OPTIONS = 6;
+    const optionsEl = document.getElementById("options");
+    const errorEl = document.getElementById("form-error");
+
+    function addOption(value = "") {
+      const count = optionsEl.children.length;
+      if (count >= MAX_OPTIONS) return;
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `
+        <input type="radio" name="correct" title="Correct answer" ${count === 0 ? "checked" : ""}>
+        <input type="text" placeholder="Option ${count + 1}" value="${esc(value)}">
+        <button type="button" class="danger" title="Remove">✕</button>`;
+      row.querySelector("button").onclick = () => {
+        if (optionsEl.children.length > MIN_OPTIONS) row.remove();
+      };
+      optionsEl.appendChild(row);
+    }
+
+    function resetForm() {
+      document.getElementById("q-text").value = "";
+      optionsEl.innerHTML = "";
+      for (let i = 0; i < 4; i++) addOption();
+      errorEl.textContent = "";
+    }
+
+    document.getElementById("add-option").onclick = () => addOption();
+
+    document.getElementById("q-form").onsubmit = async (e) => {
+      e.preventDefault();
+      errorEl.textContent = "";
+      const rows = [...optionsEl.children];
+      const filled = rows
+        .map((r) => ({ text: r.querySelector('input[type="text"]').value.trim(),
+                       correct: r.querySelector('input[type="radio"]').checked }))
+        .filter((o) => o.text);
+      const correctIndex = filled.findIndex((o) => o.correct);
+      if (filled.length < 2) return (errorEl.textContent = "Fill in at least two options.");
+      if (correctIndex === -1) return (errorEl.textContent = "Mark which (non-empty) option is correct.");
+      try {
+        await api("/api/questions", {
+          method: "POST",
+          body: {
+            text: document.getElementById("q-text").value,
+            options: filled.map((o) => o.text),
+            correctIndex,
+          },
+        });
+        resetForm();
+        loadQuestions();
+      } catch (err) {
+        errorEl.textContent = err.message;
+      }
+    };
+
+    async function loadQuestions() {
+      const qs = await api("/api/questions");
+      document.getElementById("q-count").textContent = qs.length;
+      document.getElementById("q-list").innerHTML = qs.map((q, i) => `
+        <div class="card q-item">
+          <div>
+            <strong>${i + 1}. ${esc(q.text)}</strong>
+            <ol type="A">${q.options.map((o, j) =>
+              `<li class="${j === q.correctIndex ? "correct" : ""}">${esc(o)}${j === q.correctIndex ? " ✔" : ""}</li>`).join("")}
+            </ol>
+          </div>
+          <button class="danger" data-id="${q.id}">Delete</button>
+        </div>`).join("") || `<p class="muted">No questions yet.</p>`;
+      document.querySelectorAll("#q-list button[data-id]").forEach((b) => {
+        b.onclick = async () => {
+          if (!confirm("Delete this question? Answers to it will also be removed.")) return;
+          await api(`/api/questions/${b.dataset.id}`, { method: "DELETE" });
+          loadQuestions();
+        };
+      });
+    }
+
+    resetForm();
+    loadQuestions();
+  </script>
+</body>
+</html>
