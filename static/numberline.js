@@ -8,13 +8,15 @@
 //     [values]                 // optional small unlabeled dots (e.g. each team's answer)
 //   )
 //
-// Markers and the range are always visible. Dots may widen the line only
-// until the range covers MIN_BAND_SHARE of it; dots further out are shown
-// as arrows at the edge (up to MAX_ARROWS stacked, then "+N").
+// Markers and the range are always visible. The first marker is the target
+// (the correct answer); the area target ± (distance to the furthest other
+// marker) must cover at least MIN_SHARE of the line. Dots may widen the line
+// only that far; dots further out are shown as arrows at the edge (up to
+// MAX_ARROWS stacked, then "+N").
 
 class NumberLine {
   static PAD = 0.18;            // empty space on each side, as a share of the data span
-  static MIN_BAND_SHARE = 0.3;  // the highlighted range never gets smaller than this
+  static MIN_SHARE = 0.3;       // target ± worst marker distance never gets smaller than this
   static MAX_ARROWS = 5;
 
   constructor(el) {
@@ -38,13 +40,14 @@ class NumberLine {
     if (!required.length) return null;
     let lo = Math.min(...required), hi = Math.max(...required);
 
-    // How wide the data span may get: the range must stay >= MIN_BAND_SHARE
-    // of the visible (padded) line. Without a (non-empty) range – the 1 didn't
-    // answer or was spot on – use 40% of the answer's size as the reference.
-    const scale = 1 / NumberLine.MIN_BAND_SHARE / (1 + 2 * NumberLine.PAD);
-    const bandWidth = band ? Math.abs(band.to - band.from) : 0;
-    const ref = bandWidth > 1e-9 ? bandWidth
-              : Math.max(hi - lo, 2 * Math.max(Math.abs(values[0]) * 0.2, 1));
+    // How wide the data span may get: target ± the worst marker distance (e.g.
+    // the 1 or the average, whichever is further off) must stay >= MIN_SHARE
+    // of the visible (padded) line. If every marker is spot on, fall back to
+    // 40% of the target's size.
+    const target = values[0];
+    const worst = Math.max(...values.map((v) => Math.abs(v - target)));
+    const ref = worst > 1e-9 ? 2 * worst : 2 * Math.max(Math.abs(target) * 0.2, 1);
+    const scale = 1 / NumberLine.MIN_SHARE / (1 + 2 * NumberLine.PAD);
     const maxSpan = Math.max(hi - lo, ref * scale);
 
     // Include dots outside the required range, nearest first, while they fit.
