@@ -43,8 +43,12 @@ Data is stored in SQLite (`quiz.db`, created on first run and seeded with 3 exam
 and a game where *Erling* is the 1). Set `QUIZ_DB` to use another file, `PORT` for another port.
 Databases from the first (multiple-choice) version are kept as `*_v1` tables and a fresh schema is created.
 
-Note: the secret link keeps players from accidentally (or cheekily) playing as the 1, but there
-is no host login – anyone who knows the API could fetch the link or advance the game.
+### Host password
+
+Create and Showcase (and the API calls only they use: managing questions, Next, New game and the
+1's secret link) ask for a password via the browser's login prompt. Any user name works; the
+password is `honestmistake` (`HOST_PASSWORD` in `app.py`). This only keeps curious players out –
+it's hard-coded and travels unencrypted over plain HTTP, so it's not real security.
 
 ## Live updates
 
