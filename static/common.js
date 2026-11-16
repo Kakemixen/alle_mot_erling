@@ -44,7 +44,7 @@ function parseNumber(s) {
 const qrSrc = (url) => `/api/qr.svg?data=${encodeURIComponent(url)}`;
 
 // Inject the shared header and highlight the current page.
-// { nav: false } shows just the logo (for players' phones).
+// { nav: false } shows just the logo as plain text, with no links (for players' phones).
 function renderHeader(active, { nav = true } = {}) {
   const links = [
     ["create", "/create.html", "Create"],
@@ -54,7 +54,7 @@ function renderHeader(active, { nav = true } = {}) {
   const header = document.createElement("header");
   header.className = "top";
   header.innerHTML = `
-    <a class="logo" href="/">Alle mod <span class="one">1</span></a>
+    ${nav ? `<a class="logo" href="/">` : `<span class="logo">`}Alle mod <span class="one">1</span>${nav ? "</a>" : "</span>"}
     ${nav ? `<nav>${links.map(([key, href, label]) =>
       `<a href="${href}" class="${key === active ? "active" : ""}">${label}</a>`).join("")}
     </nav>` : ""}`;
