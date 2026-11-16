@@ -9,7 +9,7 @@
 # headroom for normal requests.
 import os
 
-# Behind nginx (recommended, see deploy/nginx.conf): listen only locally.
+# Behind Caddy (recommended, see deploy/Caddyfile): listen only locally.
 # To expose gunicorn directly instead, set BIND=0.0.0.0:8000.
 bind = os.environ.get("BIND", "127.0.0.1:8000")
 

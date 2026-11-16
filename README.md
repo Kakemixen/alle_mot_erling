@@ -55,8 +55,9 @@ connection (and thread), and the change notifications live in that one process �
 
 Recommended setup on a Linux server (examples in `deploy/`):
 
-* **nginx in front** with HTTPS (`deploy/nginx.conf`). It passes the live updates through
-  unbuffered, encrypts the host login, and with HTTP/2 there's no per-browser connection limit.
+* **Caddy in front** for HTTPS (`deploy/Caddyfile`). It gets and renews the certificate by
+  itself, encrypts the host login, passes the live updates straight through, and with HTTP/2
+  there's no per-browser connection limit.
 * **systemd** to start it on boot and restart on crashes (`deploy/alle-mot-erling.service`).
 * **Set `PUBLIC_URL`** to the address players use, e.g. `PUBLIC_URL=https://quiz.example.com`
   (in the systemd file), so the QR codes point to the right place – see below.
@@ -80,7 +81,7 @@ The `<base>` address is chosen in this order (`public_base_url()` in `app.py`):
 3. If that address is `localhost`/`127.0.0.1`, **this machine's LAN IP** with the same port
    instead – phones can't reach "localhost" (on a phone that means the phone itself).
 
-Behind nginx, step 2 would see the internal `127.0.0.1:8000` and step 3 would turn that into
+Behind Caddy, step 2 would see the internal `127.0.0.1:8000` and step 3 would turn that into
 the server's IP with port 8000 over `http://` – not reachable for players. That's why
 `PUBLIC_URL` should be set on a server.
 

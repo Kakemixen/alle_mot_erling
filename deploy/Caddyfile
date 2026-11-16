@@ -1,0 +1,18 @@
+# Example Caddy config for the quiz, in front of gunicorn on 127.0.0.1:8000.
+#
+# Replace quiz.example.com with your domain, then:
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# Caddy gets and renews the HTTPS certificate by itself (Let's Encrypt), as
+# long as the domain points to this server and ports 80 and 443 are open.
+# It also redirects http:// to https:// and speaks HTTP/2, so one browser can
+# keep many quiz tabs open (no ~6-connection limit).
+#
+# Live updates (/api/events, Server-Sent Events) need nothing special: Caddy
+# passes text/event-stream responses through immediately. Don't add `encode`
+# (compression) here – it could hold those messages back.
+
+quiz.example.com {
+	reverse_proxy 127.0.0.1:8000
+}

@@ -523,7 +523,7 @@ def events():
                 yield f"data: {version}\n\n"
 
     return Response(stream(), mimetype="text/event-stream",
-                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+                    headers={"Cache-Control": "no-cache"})
 
 
 # ---------------------------------------------------------------- links / QR
