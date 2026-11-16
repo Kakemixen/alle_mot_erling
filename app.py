@@ -14,15 +14,18 @@ Configuration (environment variables):
 The game is driven by the host from the showcase page. A game moves through
 these phases (stored on the game row):
 
-    lobby_one  – showcase shows the QR code for the 1
+    lobby_one  – showcase shows the QR code for Erling
     lobby      – showcase shows the QR code for teams and who has joined
-    question   – question q_index is open; the 1 and the teams answer on their phones
+    question   – question q_index is open; Erling and the teams answer on their phones
     reveal     – answers are locked; reveal_step 1 = correct answer,
-                 2 = the 1's answer + range to beat, 3 = teams' average + point
+                 2 = Erling's answer + range to beat, 3 = teams' average + point
     final      – total score
 
 Each question gives one point to whoever is closest to the correct answer:
-the 1, or the average of all team answers.
+Erling, or the average of all team answers.
+
+"Erling" is the default name of the one playing against everyone; the host
+can pick someone else per game. In the code that player is called "one".
 """
 import io
 import json
@@ -57,8 +60,8 @@ CREATE TABLE IF NOT EXISTS questions (
 );
 CREATE TABLE IF NOT EXISTS games (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    one_name     TEXT    NOT NULL,              -- the "1" playing against everyone
-    one_token    TEXT    NOT NULL,              -- secret for the 1's private page
+    one_name     TEXT    NOT NULL,              -- the one playing against everyone (Erling)
+    one_token    TEXT    NOT NULL,              -- secret for their private page
     one_joined   INTEGER NOT NULL DEFAULT 0,
     phase        TEXT    NOT NULL DEFAULT 'lobby_one',
     q_index      INTEGER NOT NULL DEFAULT 0,
@@ -301,7 +304,7 @@ def new_game():
     data = request.get_json(silent=True) or {}
     name = str(data.get("oneName", "")).strip()[:40]
     if not name:
-        abort(400, "Name of the 1 is required")
+        abort(400, "Please enter a name")
     db = get_db()
     db.execute("INSERT INTO games (one_name, one_token) VALUES (?, ?)", (name, new_token()))
     db.commit()
@@ -355,7 +358,7 @@ def one_join():
     data = request.get_json(silent=True) or {}
     game = current_game()
     if not check_one_token(game, data.get("token")):
-        abort(403, "This link for the 1 is not valid for the current game")
+        abort(403, f"This link for {game['one_name']} is not valid for the current game")
     db = get_db()
     db.execute("UPDATE games SET one_joined = 1 WHERE id = ?", (game["id"],))
     db.commit()
@@ -373,7 +376,7 @@ def join_team():
     if game["phase"] == "final":
         abort(409, "This game is over – wait for the host to start a new one")
     if name.casefold() == game["one_name"].casefold():
-        abort(400, f"{game['one_name']} is the 1 – please pick another team name")
+        abort(400, f"{game['one_name']} plays against everyone – please pick another team name")
     token = new_token()
     db = get_db()
     try:
@@ -396,7 +399,7 @@ def submit_answer():
         abort(400, "Please enter a number")
     if data.get("oneToken") is not None:
         if not check_one_token(game, data["oneToken"]):
-            abort(403, "This link for the 1 is not valid for the current game")
+            abort(403, f"This link for {game['one_name']} is not valid for the current game")
         player = "one"
     else:
         team = team_by_token(game, data.get("teamToken"))
@@ -421,7 +424,7 @@ def submit_answer():
 @app.get("/api/state")
 def state():
     """Everything the showcase and the phones need. Hidden information (the
-    correct answer, the 1's answer, the average) is only included once the
+    correct answer, Erling's answer, the average) is only included once the
     host has revealed it."""
     db = get_db()
     game = current_game()
@@ -548,12 +551,12 @@ def public_base_url():
 
 @app.get("/api/links")
 def links():
-    """Join URLs for the teams and (secret) for the 1. Used by the showcase page."""
+    """Join URLs for the teams and (secret) for Erling. Used by the showcase page."""
     game = current_game()
     base = public_base_url()
     return jsonify({
         "crowd": f"{base}/play.html",
-        "one": f"{base}/one.html?token={game['one_token']}",
+        "one": f"{base}/erling.html?token={game['one_token']}",
     })
 
 

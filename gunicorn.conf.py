@@ -15,7 +15,7 @@ bind = os.environ.get("BIND", "127.0.0.1:8000")
 
 workers = 1  # must stay 1, see above
 worker_class = "gthread"
-# 64 covers ~30 teams + showcase + the 1 (one thread each) with room to spare.
+# 64 covers ~30 teams + showcase + Erling (one thread each) with room to spare.
 threads = int(os.environ.get("THREADS", 64))
 
 # Waiting live-update connections send a keep-alive every 15 s; this is about

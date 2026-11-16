@@ -61,10 +61,10 @@
       line = null;
       if (g.phase === "lobby_one") {
         v.innerHTML = `
-          <p class="kicker">Step 1 · The 1</p>
-          <h1 class="huge">Tonight's 1 is <span class="accent">${esc(g.oneName)}</span></h1>
+          <p class="kicker">Step 1 · ${esc(g.oneName)}</p>
+          <h1 class="huge">Tonight: everyone against <span class="accent">${esc(g.oneName)}</span></h1>
           <div class="qr-block">
-            <img class="qr" src="${qrSrc(links.one)}" alt="QR code for the 1">
+            <img class="qr" src="${qrSrc(links.one)}" alt="QR code for ${esc(g.oneName)}">
             <div>
               <p class="lead">Only <strong>${esc(g.oneName)}</strong> scans this code.</p>
               <a class="link" href="${esc(links.one)}" target="_blank">${esc(links.one)}</a>
@@ -196,7 +196,7 @@
       $("view").innerHTML = `
         <p class="kicker">Final score</p>
         <div class="versus">
-          <div class="side one"><div class="muted">The 1</div><div><strong>${name}</strong></div>
+          <div class="side one"><div class="muted">Alone</div><div><strong>${name}</strong></div>
             <div class="score">${s.one}</div></div>
           <div class="vs">VS</div>
           <div class="side crowd"><div class="muted">Everyone</div>
@@ -262,7 +262,7 @@
     });
 
     $("new-game").onclick = async () => {
-      const name = prompt("Who is the 1 in the new game?", state ? state.game.oneName : "");
+      const name = prompt("Who plays against everyone in the new game?", state ? state.game.oneName : "");
       if (!name || !name.trim()) return;
       try {
         await api("/api/game", { method: "POST", body: { oneName: name.trim() } });

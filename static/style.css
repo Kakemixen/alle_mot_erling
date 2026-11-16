@@ -5,11 +5,11 @@
   --line: #2c376e;
   --text: #f3f4ff;
   --muted: #a3a9d1;
-  --accent: #ff3d7f;   /* the 1 */
+  --accent: #ff3d7f;   /* Erling */
   --crowd: #2fd3ff;    /* everyone */
   --good: #3ee08f;     /* correct answer */
   --bad: #ff5a5a;
-  --gold: #ffd23f;     /* range to beat the 1 */
+  --gold: #ffd23f;     /* range to beat Erling */
   --radius: 14px;
 }
 

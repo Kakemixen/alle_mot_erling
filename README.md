@@ -1,8 +1,8 @@
 # Alle mot Erling
 
 A small "everyone against one" quiz platform, inspired by the Danish TV show *Alle mod 1*.
-One player (the **1**) takes on all the teams. Every answer is a number, and each question
-gives one point to whoever is closest to the correct answer: the 1, or the **average** of
+One player (**Erling**) takes on all the teams. Every answer is a number, and each question
+gives one point to whoever is closest to the correct answer: Erling, or the **average** of
 all team answers.
 
 ## Pages
@@ -12,20 +12,20 @@ all team answers.
 | Create   | `/create.html`      | Write questions with a numeric answer (and optional unit) |
 | Showcase | `/showcase.html`    | The big screen – the host runs the whole game from here |
 | Join     | `/play.html`        | Phone page for teams (reached via the QR code on the showcase) |
-| The 1    | `/one.html?token=…` | Phone page for the 1, only reachable via a secret link that changes every game |
+| Erling   | `/erling.html?token=…` | Phone page for Erling, only reachable via a secret link that changes every game |
 
 ## Game flow
 
 The host presses **Next** on the showcase (or →/Page Down, so a presenter clicker works):
 
-1. **The 1** – QR code/link for the 1, shows when the 1 has opened it.
+1. **Erling** – QR code/link for Erling, shows when Erling has opened it.
 2. **Teams** – QR code for teams and the list of teams that have joined. **Start quiz**.
 3. For each question:
-   1. Only the question is shown; the 1 and the teams answer on their phones (they can change
+   1. Only the question is shown; Erling and the teams answer on their phones (they can change
       their answer until the host locks it).
    2. The answers are revealed step by step on a number line:
-      the correct answer → the 1's answer and the range everyone's average must land in to beat
-      the 1 → everyone's average and who gets the point.
+      the correct answer → Erling's answer and the range everyone's average must land in to beat
+      Erling → everyone's average and who gets the point.
 4. **Final score** with a summary of every question. **New game** starts over with a new 1.
 
 ## Running locally
@@ -57,7 +57,7 @@ Recommended setup on a Linux server (examples in `deploy/`):
 
 * **nginx in front** with HTTPS (`deploy/nginx.conf`). It passes the live updates through
   unbuffered, encrypts the host login, and with HTTP/2 there's no per-browser connection limit.
-* **systemd** to start it on boot and restart on crashes (`deploy/alle-mod-1.service`).
+* **systemd** to start it on boot and restart on crashes (`deploy/alle-mot-erling.service`).
 * **Set `PUBLIC_URL`** to the address players use, e.g. `PUBLIC_URL=https://quiz.example.com`.
   The QR codes are built from it. Without it they're built from the address the host's browser
   used, which behind nginx or with HTTPS can come out wrong (e.g. `http://` or an internal IP).
@@ -77,14 +77,14 @@ All optional, as environment variables:
 ### Data
 
 Data is stored in SQLite (created on first run and seeded with 3 example questions and a game
-where *Erling* is the 1), in WAL mode so many simultaneous answers work well. Back it up with
+where Erling plays against everyone), in WAL mode so many simultaneous answers work well. Back it up with
 `sqlite3 quiz.db ".backup backup.db"` – copying the file alone can miss the `quiz.db-wal` part.
 Databases from the first (multiple-choice) version are kept as `*_v1` tables and a fresh schema is created.
 
 ### Host password
 
 Create and Showcase (and the API calls only they use: managing questions, Next, New game and the
-1's secret link) ask for a login via the browser's login prompt: user name `gamemaster`,
+Erling's secret link) ask for a login via the browser's login prompt: user name `gamemaster`,
 password `honestmistake` (or `HOST_USER` / `HOST_PASSWORD`). This only keeps curious players out:
 the default is in the source code, and without HTTPS it travels unencrypted.
 

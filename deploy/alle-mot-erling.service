@@ -1,0 +1,24 @@
+# Example systemd service: starts the quiz on boot and restarts it if it crashes.
+# Assumes the code is in /opt/alle-mot-erling with its .venv, run as user "quiz".
+#
+#   sudo cp deploy/alle-mot-erling.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now alle-mot-erling
+#   journalctl -u alle-mot-erling -f        # logs
+
+[Unit]
+Description=Alle mot Erling quiz
+After=network.target
+
+[Service]
+User=quiz
+WorkingDirectory=/opt/alle-mot-erling
+# Keep the database outside the code folder, so updating the code can't touch it.
+Environment=QUIZ_DB=/var/lib/alle-mot-erling/quiz.db
+StateDirectory=alle-mot-erling
+Environment=PUBLIC_URL=https://quiz.example.com
+# Environment=HOST_PASSWORD=something-else
+ExecStart=/opt/alle-mot-erling/.venv/bin/gunicorn -c gunicorn.conf.py app:app
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

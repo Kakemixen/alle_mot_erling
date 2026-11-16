@@ -41,7 +41,7 @@ class NumberLine {
     let lo = Math.min(...required), hi = Math.max(...required);
 
     // How wide the data span may get: target ± the worst marker distance (e.g.
-    // the 1 or the average, whichever is further off) must stay >= MIN_SHARE
+    // Erling or the average, whichever is further off) must stay >= MIN_SHARE
     // of the visible (padded) line. If every marker is spot on, fall back to
     // 40% of the target's size.
     const target = values[0];

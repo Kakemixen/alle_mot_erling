@@ -1,4 +1,4 @@
-// Phone view, shared by play.html (teams) and one.html (the 1).
+// Phone view, shared by play.html (teams) and erling.html (Erling).
 // Polls the game state and shows whatever fits the current phase:
 // join → wait → answer the current question → "look at the screen" → …
 
@@ -38,13 +38,13 @@ function startPlayer({ mode, oneToken }) {
   }
 
   const header = () => mode === "one"
-    ? `<p class="kicker">You are the <span class="accent">1</span> · ${esc(state.game.oneName)}</p>`
+    ? `<p class="kicker"><span class="accent">${esc(state.game.oneName)}</span> against everyone</p>`
     : `<p class="kicker">Team ${esc(state.me.name)}</p>`;
 
   const views = {
     invalid() {
       root.innerHTML = `<h1>Hmm…</h1>
-        <p class="error">This link for the 1 isn't valid for the current game. Ask the host for the new QR code.</p>`;
+        <p class="error">This link for ${esc(state.game.oneName)} isn't valid for the current game. Ask the host for the new QR code.</p>`;
     },
     over() {
       root.innerHTML = `<h1>Game over</h1><p class="lead">Wait for the host to start a new game, then reload this page.</p>`;
