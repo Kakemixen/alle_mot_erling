@@ -3,83 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Play Quiz</title>
+  <title>Join Quiz</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <main>
-    <!-- Step 1: join -->
-    <section id="join">
-      <h1>Join the game</h1>
-      <p class="lead">Tonight it's <strong class="one-name"></strong> against everyone —
-        and you're on team everyone. Enter your name to play.</p>
-      <form id="join-form" class="card">
-        <label for="name">Your name</label>
-        <input type="text" id="name" autocomplete="nickname" required>
-        <div style="margin-top:14px"><button type="submit">Start quiz</button></div>
-        <p class="error" id="join-error"></p>
-      </form>
-    </section>
-
-    <!-- Step 2: questions -->
-    <section id="quiz" hidden>
-      <div class="progress"><div id="progress-bar"></div></div>
-      <p class="muted" id="q-counter"></p>
-      <p class="question-text" id="q-text"></p>
-      <div class="choices" id="choices"></div>
-      <div class="nav-buttons">
-        <button class="secondary" id="prev">← Back</button>
-        <button id="next" disabled>Next →</button>
-      </div>
-      <p class="error" id="quiz-error"></p>
-    </section>
-
-    <!-- Step 3: done -->
-    <section id="done" hidden>
-      <h1>Answers locked in! 🔒</h1>
-      <p class="lead" id="done-text"></p>
-      <a class="btn" href="/results.html">See the results</a>
-    </section>
-  </main>
-
+  <main id="app"><p class="muted">Loading…</p></main>
   <script src="/common.js"></script>
-  <script src="/quiz.js"></script>
+  <script src="/player.js"></script>
   <script>
     renderHeader("play");
-
-    const $ = (id) => document.getElementById(id);
-    let game, questions;
-
-    async function init() {
-      ({ game, questions } = await api("/api/play"));
-      document.querySelectorAll(".one-name").forEach((el) => (el.textContent = game.oneName));
-      try { $("name").value = localStorage.getItem("playerName") || ""; } catch {}
-    }
-
-    $("join-form").onsubmit = (e) => {
-      e.preventDefault();
-      $("join-error").textContent = "";
-      const playerName = $("name").value.trim();
-      if (!playerName) return;
-      if (playerName.toLowerCase() === game.oneName.toLowerCase()) {
-        $("join-error").textContent = `${game.oneName} is the 1 tonight — please pick another name.`;
-        return;
-      }
-      if (!questions.length) {
-        $("join-error").textContent = "There are no questions yet — ask the host to create some.";
-        return;
-      }
-      try { localStorage.setItem("playerName", playerName); } catch {}
-      $("join").hidden = true;
-      runQuiz(questions, async (answers) => {
-        await api("/api/answers", { method: "POST", body: { gameId: game.id, playerName, answers } });
-        $("quiz").hidden = true;
-        $("done").hidden = false;
-        $("done-text").textContent = `Thanks ${playerName}! You're playing for team "everyone" against ${game.oneName}.`;
-      });
-    };
-
-    init().catch((err) => ($("join-error").textContent = err.message));
+    startPlayer({ mode: "team" });
   </script>
 </body>
 </html>

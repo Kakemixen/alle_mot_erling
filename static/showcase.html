@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quiz Showcase</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="showcase">
+  <main class="stage">
+    <div id="view"><p class="muted">Loading…</p></div>
+  </main>
+
+  <footer class="controls">
+    <div class="mini-score" id="mini-score"></div>
+    <span class="spacer"></span>
+    <button class="secondary small" id="new-game">New game</button>
+    <button id="next">Next</button>
+  </footer>
+
+  <script src="/common.js"></script>
+  <script src="/numberline.js"></script>
+  <script>
+    renderHeader("showcase");
+
+    const $ = (id) => document.getElementById(id);
+    let state = null, viewKey = null, line = null, links = null, linksGame = null, factsKey = null, busy = false;
+
+    // ------------------------------------------------------------ polling
+    async function poll() {
+      try {
+        state = await api("/api/state");
+        if (linksGame !== state.game.id) {
+          links = await api("/api/links");
+          linksGame = state.game.id;
+          viewKey = null; // QR codes changed
+        }
+        render();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function render() {
+      const g = state.game;
+      const group = g.phase === "question" || g.phase === "reveal" ? `q${g.qIndex}` : g.phase;
+      const key = `${g.id}:${group}`;
+      if (key !== viewKey) {
+        viewKey = key;
+        factsKey = null;
+        buildView();
+      }
+      updateView();
+      updateControls();
+    }
+
+    // ------------------------------------------------------------ views
+    function buildView() {
+      const g = state.game;
+      const v = $("view");
+      line = null;
+      if (g.phase === "lobby_one") {
+        v.innerHTML = `
+          <p class="kicker">Step 1 · The 1</p>
+          <h1 class="huge">Tonight's 1 is <span class="accent">${esc(g.oneName)}</span></h1>
+          <div class="qr-block">
+            <img class="qr" src="${qrSrc(links.one)}" alt="QR code for the 1">
+            <div>
+              <p class="lead">Only <strong>${esc(g.oneName)}</strong> scans this code.</p>
+              <a class="link" href="${esc(links.one)}" target="_blank">${esc(links.one)}</a>
+              <p class="status" id="one-status"></p>
+            </div>
+          </div>`;
+      } else if (g.phase === "lobby") {
+        v.innerHTML = `
+          <p class="kicker">Step 2 · Teams</p>
+          <h1 class="huge">Everyone against <span class="accent">${esc(g.oneName)}</span></h1>
+          <div class="qr-block">
+            <img class="qr" src="${qrSrc(links.crowd)}" alt="QR code to join as a team">
+            <div>
+              <p class="lead">Scan to join as a team.</p>
+              <a class="link" href="${esc(links.crowd)}" target="_blank">${esc(links.crowd)}</a>
+              <p class="status" id="teams-count"></p>
+              <div class="chips" id="teams"></div>
+            </div>
+          </div>`;
+      } else if (g.phase === "question" || g.phase === "reveal") {
+        v.innerHTML = `
+          <p class="kicker">Question ${g.qIndex + 1} of ${g.totalQuestions}</p>
+          <h1 class="question-big">${esc(state.current.text)}${state.current.unit
+            ? ` <span class="muted unit">(${esc(state.current.unit)})</span>` : ""}</h1>
+          <div id="q-status"></div>
+          <div id="reveal" hidden>
+            <div id="line"></div>
+            <div class="facts" id="facts"></div>
+          </div>`;
+        line = new NumberLine($("line"));
+      } else if (g.phase === "final") {
+        buildFinal();
+      }
+    }
+
+    function updateView() {
+      const g = state.game;
+      if (g.phase === "lobby_one") {
+        $("one-status").innerHTML = g.oneJoined
+          ? `<span class="success">✓ ${esc(g.oneName)} is ready!</span>`
+          : `<span class="muted">Waiting for ${esc(g.oneName)} to open the link…</span>`;
+      } else if (g.phase === "lobby") {
+        const n = state.teams.length;
+        $("teams-count").textContent = n ? `${n} team${n === 1 ? "" : "s"} joined` : "Waiting for teams…";
+        $("teams").innerHTML = state.teams.map((t) => `<span class="chip">${esc(t.name)}</span>`).join("");
+      } else if (g.phase === "question") {
+        const c = state.current;
+        $("q-status").innerHTML = `
+          <p class="status">
+            <span class="${c.oneAnswered ? "success" : "muted"}">${esc(g.oneName)} ${c.oneAnswered ? "✓" : "…"}</span>
+            &nbsp;·&nbsp; ${c.teamsAnswered} of ${state.teams.length} teams answered
+          </p>
+          <div class="chips">${state.teams.map((t) =>
+            `<span class="chip ${t.answered ? "done" : ""}">${esc(t.name)}${t.answered ? " ✓" : ""}</span>`).join("")}</div>`;
+      } else if (g.phase === "reveal") {
+        $("q-status").innerHTML = "";
+        $("reveal").hidden = false;
+        updateReveal();
+      }
+    }
+
+    function updateReveal() {
+      const g = state.game, c = state.current, step = g.revealStep, name = esc(g.oneName);
+      const u = (v) => esc(fmtUnit(v, c.unit));
+      const markers = [{ key: "correct", value: c.correct, cls: "correct", side: "bottom",
+                         label: `Correct<br><b>${u(c.correct)}</b>` }];
+      let band = null;
+      if (step >= 2 && c.one !== null) {
+        markers.push({ key: "one", value: c.one, cls: "one", side: "top", row: 0,
+                       label: `${name}<br><b>${u(c.one)}</b>` });
+        band = { from: c.correct - c.oneDistance, to: c.correct + c.oneDistance };
+      }
+      if (step >= 3 && c.average !== null) {
+        markers.push({ key: "avg", value: c.average, cls: "crowd", side: "top", row: 1,
+                       label: `Everyone (avg.)<br><b>${u(c.average)}</b>` });
+      }
+      line.update(markers, band);
+
+      // The text below the line only changes per step – rebuild it then so
+      // the fade-in animation runs once.
+      const key = `${viewKey}:${step}`;
+      if (key === factsKey) return;
+      factsKey = key;
+      const facts = [`<div class="fact correct">Correct answer: <b>${u(c.correct)}</b></div>`];
+      if (step >= 2) {
+        if (c.one === null) {
+          facts.push(`<div class="fact one">${name} didn't answer — any answer from everyone wins!</div>`);
+        } else if (c.oneDistance === 0) {
+          facts.push(`<div class="fact one">${name} answered <b>${u(c.one)}</b> — spot on! 🎯</div>`,
+                     `<div class="fact band">Everyone can at best get a draw…</div>`);
+        } else {
+          facts.push(`<div class="fact one">${name} answered <b>${u(c.one)}</b> — ${u(c.oneDistance)} off</div>`,
+                     `<div class="fact band">To beat ${name}, everyone's average must be between
+                        <b>${u(c.correct - c.oneDistance)}</b> and <b>${u(c.correct + c.oneDistance)}</b></div>`);
+        }
+      }
+      if (step >= 3) {
+        facts.push(c.average === null
+          ? `<div class="fact crowd">No team answered this one.</div>`
+          : `<div class="fact crowd">Everyone's average: <b>${u(c.average)}</b> — ${u(c.averageDistance)} off
+               <span class="muted">(${c.teamAnswers} team${c.teamAnswers === 1 ? "" : "s"})</span></div>`);
+        const verdict = {
+          one: `🏆 Point to ${name}!`,
+          crowd: "🏆 Point to everyone!",
+          draw: "🤝 Draw — no points",
+        }[c.winner] || "No answers — no points";
+        facts.push(`<p class="winner-banner ${c.winner || ""}">${verdict}</p>`);
+      }
+      $("facts").innerHTML = facts.join("");
+      // Only animate the newest facts
+      const all = $("facts").children;
+      const fresh = step === 1 ? 1 : step === 2 ? all.length - 1 : 2;
+      [...all].forEach((el, i) => { if (i >= all.length - fresh) el.classList.add("appear"); });
+    }
+
+    function buildFinal() {
+      const g = state.game, s = state.score, name = esc(g.oneName);
+      const banner = s.one > s.crowd ? `🏆 ${name} beats everyone!`
+                   : s.one < s.crowd ? "🏆 Everyone wins!" : "🤝 It's a draw!";
+      const rows = state.results.map((r, i) => {
+        const u = (v) => (v === null ? "—" : esc(fmtUnit(v, r.unit)));
+        const point = { one: name, crowd: "Everyone", draw: "Draw" }[r.winner] || "—";
+        return `<tr><td>${i + 1}. ${esc(r.text)}</td><td>${u(r.correct)}</td>
+                <td class="${r.winner === "one" ? "win" : ""}">${u(r.one)}</td>
+                <td class="${r.winner === "crowd" ? "win" : ""}">${u(r.average)}</td><td>${point}</td></tr>`;
+      }).join("");
+      $("view").innerHTML = `
+        <p class="kicker">Final score</p>
+        <div class="versus">
+          <div class="side one"><div class="muted">The 1</div><div><strong>${name}</strong></div>
+            <div class="score">${s.one}</div></div>
+          <div class="vs">VS</div>
+          <div class="side crowd"><div class="muted">Everyone</div>
+            <div><strong>${state.teams.length} team${state.teams.length === 1 ? "" : "s"}</strong></div>
+            <div class="score">${s.crowd}</div></div>
+        </div>
+        <p class="winner-banner appear">${banner}</p>
+        <table class="summary">
+          <thead><tr><th>Question</th><th>Correct</th><th>${name}</th><th>Everyone (avg.)</th><th>Point</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    // ------------------------------------------------------------ controls
+    function nextLabel() {
+      const g = state.game;
+      if (g.phase === "lobby_one") return "Continue to teams →";
+      if (g.phase === "lobby") return "Start quiz ▶";
+      if (g.phase === "question") return "Lock answers →";
+      if (g.phase === "reveal") {
+        if (g.revealStep === 1) return `Show ${g.oneName}'s answer →`;
+        if (g.revealStep === 2) return "Show everyone's average →";
+        return g.qIndex + 1 < g.totalQuestions ? "Next question →" : "Final score →";
+      }
+      return null;
+    }
+
+    function updateControls() {
+      const g = state.game, label = nextLabel();
+      $("next").hidden = !label;
+      $("next").textContent = label || "";
+      $("next").disabled = busy || (g.phase === "lobby" && g.totalQuestions === 0);
+      $("next").title = g.phase === "lobby" && g.totalQuestions === 0 ? "Create some questions first" : "→ / Page Down";
+      $("new-game").classList.toggle("primary", g.phase === "final");
+      $("mini-score").innerHTML = g.phase === "question" || g.phase === "reveal"
+        ? `<span class="accent">${esc(g.oneName)} ${state.score.one}</span> – <span class="crowd-c">${state.score.crowd} Everyone</span>`
+        : "";
+    }
+
+    async function next() {
+      if (busy || !state || $("next").hidden || $("next").disabled) return;
+      busy = true;
+      updateControls();
+      try {
+        const g = state.game;
+        state = await api("/api/game/next", {
+          method: "POST",
+          body: { from: { phase: g.phase, qIndex: g.qIndex, revealStep: g.revealStep } },
+        });
+      } catch (err) {
+        alert(err.message);
+      }
+      busy = false;
+      render();
+    }
+
+    $("next").onclick = next;
+    document.addEventListener("keydown", (e) => {
+      if (["ArrowRight", "PageDown"].includes(e.key) && !e.target.closest("input, textarea")) {
+        e.preventDefault();
+        next();
+      }
+    });
+
+    $("new-game").onclick = async () => {
+      const name = prompt("Who is the 1 in the new game?", state ? state.game.oneName : "");
+      if (!name || !name.trim()) return;
+      try {
+        await api("/api/game", { method: "POST", body: { oneName: name.trim() } });
+      } catch (err) {
+        return alert(err.message);
+      }
+      poll();
+    };
+
+    poll();
+    setInterval(poll, 1000);
+  </script>
+</body>
+</html>

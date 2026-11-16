@@ -8,7 +8,11 @@ async function api(path, options = {}) {
   });
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const err = new Error(data.error || `Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 
@@ -18,12 +22,33 @@ function esc(s) {
   }[c]));
 }
 
+// Format a number for display. Years and other 4-digit numbers are shown
+// without thousands separators ("2000", not "2,000").
+function fmt(v) {
+  return Number(v).toLocaleString("en", {
+    maximumFractionDigits: 2,
+    useGrouping: Math.abs(v) >= 10000,
+  });
+}
+
+function fmtUnit(v, unit) {
+  return unit ? `${fmt(v)} ${unit}` : fmt(v);
+}
+
+// Accept both "1.5" and the Danish "1,5".
+function parseNumber(s) {
+  const v = Number(String(s).trim().replace(",", "."));
+  return String(s).trim() !== "" && Number.isFinite(v) ? v : null;
+}
+
+const qrSrc = (url) => `/api/qr.svg?data=${encodeURIComponent(url)}`;
+
 // Inject the shared header and highlight the current page.
 function renderHeader(active) {
   const links = [
     ["create", "/create.html", "Create"],
-    ["play", "/play.html", "Play"],
-    ["results", "/results.html", "Results"],
+    ["showcase", "/showcase.html", "Showcase"],
+    ["play", "/play.html", "Join"],
   ];
   const header = document.createElement("header");
   header.className = "top";
