@@ -1,6 +1,14 @@
 """Alle mod 1 – a small "everyone against one" quiz platform.
 
-Run with:  python app.py   (then open http://localhost:5000)
+Run locally:     python app.py   (then open http://localhost:5000)
+Run on a server: gunicorn -c gunicorn.conf.py app:app   (see README.md)
+
+Configuration (environment variables):
+    QUIZ_DB        path of the SQLite database        (default: quiz.db next to app.py)
+    PUBLIC_URL     address players use, for QR codes  (e.g. https://quiz.example.com)
+    HOST_USER      host login user name               (default: gamemaster)
+    HOST_PASSWORD  host login password                (default: honestmistake)
+    PORT, DEBUG    only for `python app.py`           (default: 5000, off)
 
 The game is driven by the host from the showcase page. A game moves through
 these phases (stored on the game row):
@@ -31,6 +39,9 @@ from flask import Flask, Response, abort, g, jsonify, request, send_from_directo
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get("QUIZ_DB", os.path.join(BASE_DIR, "quiz.db"))
+# The address players reach the site on. QR codes use it when set; otherwise
+# they are built from the address the host's browser used (see public_base_url).
+PUBLIC_URL = os.environ.get("PUBLIC_URL", "").strip().rstrip("/")
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 
@@ -81,10 +92,10 @@ SEED_QUESTIONS = [
 
 PHASES = ("lobby_one", "lobby", "question", "reveal", "final")
 
-# Keeps curious players out of the host pages. Not real security: it is
-# hard-coded and sent unencrypted over plain HTTP.
-HOST_USER = "gamemaster"
-HOST_PASSWORD = "honestmistake"
+# Keeps curious players out of the host pages. Not real security: the default
+# is in the source code, and without HTTPS it is sent unencrypted.
+HOST_USER = os.environ.get("HOST_USER", "gamemaster")
+HOST_PASSWORD = os.environ.get("HOST_PASSWORD", "honestmistake")
 HOST_PAGES = {"/create.html", "/showcase.html"}
 HOST_API = {"/api/game", "/api/game/next", "/api/links"}  # plus /api/questions…
 LAST_REVEAL_STEP = 3
@@ -141,7 +152,8 @@ notifier = Notifier()
 # --------------------------------------------------------------------------- db
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
+        # timeout: wait up to 10 s for another thread's write instead of failing.
+        g.db = sqlite3.connect(DB_PATH, timeout=10)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
     return g.db
@@ -160,6 +172,9 @@ def new_token():
 
 def init_db():
     with sqlite3.connect(DB_PATH) as db:
+        # WAL: readers don't block the writer, so many simultaneous answers
+        # and state fetches work well. The setting is stored in the file.
+        db.execute("PRAGMA journal_mode = WAL")
         if db.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
             # Version 1 used multiple-choice questions. Keep that data around
             # as *_v1 tables instead of deleting it, and start fresh.
@@ -512,8 +527,11 @@ def events():
 
 # ---------------------------------------------------------------- links / QR
 def public_base_url():
-    """Base URL that phones can reach. If the host browses via localhost,
-    swap in this machine's LAN IP so QR codes work for other devices."""
+    """Base URL that phones can reach: PUBLIC_URL if set. Otherwise the
+    address the host's browser used – and if that is localhost, this
+    machine's LAN IP, so QR codes work for other devices on the network."""
+    if PUBLIC_URL:
+        return PUBLIC_URL
     parts = urlsplit(request.host_url)
     host = parts.hostname or "localhost"
     if host in ("localhost", "127.0.0.1", "::1"):
@@ -565,5 +583,10 @@ def index():
 init_db()
 
 if __name__ == "__main__":
+    # Built-in development server, for running locally. On a real server use
+    # gunicorn instead (see gunicorn.conf.py).
     # threaded: each open /api/events connection needs its own thread.
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True, threaded=True)
+    # Debug mode (auto-reload + in-browser debugger) is opt-in with DEBUG=1:
+    # the debugger lets anyone who can reach the page run code on this machine.
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)),
+            debug=os.environ.get("DEBUG") == "1", threaded=True)

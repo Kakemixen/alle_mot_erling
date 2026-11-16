@@ -28,7 +28,7 @@ The host presses **Next** on the showcase (or →/Page Down, so a presenter clic
       the 1 → everyone's average and who gets the point.
 4. **Final score** with a summary of every question. **New game** starts over with a new 1.
 
-## Running
+## Running locally
 
 ```sh
 python3 -m venv .venv
@@ -37,18 +37,56 @@ python3 -m venv .venv
 ```
 
 Open <http://localhost:5000/showcase.html> on the big screen. QR codes use this machine's LAN IP
-when the page is opened via `localhost`, so phones on the same network can reach the server.
+when the page is opened via `localhost`, so phones on the same network can reach it.
+`DEBUG=1 .venv/bin/python app.py` turns on auto-reload and Flask's in-browser debugger – only do
+that on a network you trust, since the debugger lets visitors run code on your machine.
 
-Data is stored in SQLite (`quiz.db`, created on first run and seeded with 3 example questions
-and a game where *Erling* is the 1). Set `QUIZ_DB` to use another file, `PORT` for another port.
+## Running on a server
+
+Use gunicorn instead of `python app.py` (the built-in server is only meant for development):
+
+```sh
+.venv/bin/gunicorn -c gunicorn.conf.py app:app      # listens on 127.0.0.1:8000
+```
+
+`gunicorn.conf.py` runs **one process with 300 threads**: every open page holds one live-update
+connection (and thread), and the change notifications live in that one process – don't raise
+`workers`. Raise `THREADS` for more than ~250 players/screens.
+
+Recommended setup on a Linux server (examples in `deploy/`):
+
+* **nginx in front** with HTTPS (`deploy/nginx.conf`). It passes the live updates through
+  unbuffered, encrypts the host login, and with HTTP/2 there's no per-browser connection limit.
+* **systemd** to start it on boot and restart on crashes (`deploy/alle-mod-1.service`).
+* **Set `PUBLIC_URL`** to the address players use, e.g. `PUBLIC_URL=https://quiz.example.com`.
+  The QR codes are built from it. Without it they're built from the address the host's browser
+  used, which behind nginx or with HTTPS can come out wrong (e.g. `http://` or an internal IP).
+
+### Configuration
+
+All optional, as environment variables:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PUBLIC_URL` | – | Address players reach the site on; used for the QR codes |
+| `QUIZ_DB` | `quiz.db` next to `app.py` | SQLite database file (keep it outside the code folder on a server) |
+| `HOST_USER` / `HOST_PASSWORD` | `gamemaster` / `honestmistake` | Host login |
+| `BIND`, `THREADS` | `127.0.0.1:8000`, `300` | gunicorn only |
+| `PORT`, `DEBUG` | `5000`, off | `python app.py` only |
+
+### Data
+
+Data is stored in SQLite (created on first run and seeded with 3 example questions and a game
+where *Erling* is the 1), in WAL mode so many simultaneous answers work well. Back it up with
+`sqlite3 quiz.db ".backup backup.db"` – copying the file alone can miss the `quiz.db-wal` part.
 Databases from the first (multiple-choice) version are kept as `*_v1` tables and a fresh schema is created.
 
 ### Host password
 
 Create and Showcase (and the API calls only they use: managing questions, Next, New game and the
 1's secret link) ask for a login via the browser's login prompt: user name `gamemaster`,
-password `honestmistake` (`HOST_USER` / `HOST_PASSWORD` in `app.py`). This only keeps curious players out –
-it's hard-coded and travels unencrypted over plain HTTP, so it's not real security.
+password `honestmistake` (or `HOST_USER` / `HOST_PASSWORD`). This only keeps curious players out:
+the default is in the source code, and without HTTPS it travels unencrypted.
 
 ## Live updates
 
@@ -60,9 +98,9 @@ most twice a second. A refresh every 30 s and when a tab becomes visible again c
 
 Things to know:
 
-* Run the app as **one process** (as `python app.py` does) – the change notifications live in memory.
-* Every open page holds one connection and, with the built-in server, one thread. That's fine for
-  a few hundred players.
-* Browsers allow only ~6 open connections per host name. When testing many teams as tabs in
-  **one** browser, tabs beyond that hang. Spread them over host names
+* Run the app as **one process** (as `python app.py` and `gunicorn.conf.py` do) – the change
+  notifications live in memory.
+* Every open page holds one connection and one thread (see *Running on a server*).
+* Without HTTPS/HTTP/2, browsers allow only ~6 open connections per host name. When testing many
+  teams as tabs in **one** browser, tabs beyond that hang. Spread them over host names
   (`localhost`, `127.0.0.1`, your LAN IP) or browsers. Real phones are not affected.
