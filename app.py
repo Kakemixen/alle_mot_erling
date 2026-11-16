@@ -83,6 +83,7 @@ PHASES = ("lobby_one", "lobby", "question", "reveal", "final")
 
 # Keeps curious players out of the host pages. Not real security: it is
 # hard-coded and sent unencrypted over plain HTTP.
+HOST_USER = "gamemaster"
 HOST_PASSWORD = "honestmistake"
 HOST_PAGES = {"/create.html", "/showcase.html"}
 HOST_API = {"/api/game", "/api/game/next", "/api/links"}  # plus /api/questions…
@@ -92,13 +93,15 @@ LAST_REVEAL_STEP = 3
 # ------------------------------------------------------------------ host password
 @app.before_request
 def require_host_password():
-    """Ask for the host password (browser's built-in login prompt, any user
-    name) on the host pages and on the API calls only they use."""
+    """Ask for the host login (browser's built-in login prompt) on the host
+    pages and on the API calls only they use."""
     path = request.path
     if not (path in HOST_PAGES or path in HOST_API or path.startswith("/api/questions")):
         return None
     auth = request.authorization
-    if auth and auth.password and secrets.compare_digest(auth.password, HOST_PASSWORD):
+    if (auth and auth.username is not None and auth.password is not None
+            and secrets.compare_digest(auth.username, HOST_USER)
+            and secrets.compare_digest(auth.password, HOST_PASSWORD)):
         return None
     return Response("The host password is required for this page.", 401,
                     {"WWW-Authenticate": 'Basic realm="Alle mod 1 host", charset="UTF-8"'})
