@@ -49,9 +49,9 @@ Use gunicorn instead of `python app.py` (the built-in server is only meant for d
 .venv/bin/gunicorn -c gunicorn.conf.py app:app      # listens on 127.0.0.1:8000
 ```
 
-`gunicorn.conf.py` runs **one process with 300 threads**: every open page holds one live-update
+`gunicorn.conf.py` runs **one process with 64 threads**: every open page holds one live-update
 connection (and thread), and the change notifications live in that one process – don't raise
-`workers`. Raise `THREADS` for more than ~250 players/screens.
+`workers`. That's plenty for ~30 teams; raise `THREADS` if you expect more than ~50 players/screens.
 
 Recommended setup on a Linux server (examples in `deploy/`):
 
@@ -71,7 +71,7 @@ All optional, as environment variables:
 | `PUBLIC_URL` | – | Address players reach the site on; used for the QR codes |
 | `QUIZ_DB` | `quiz.db` next to `app.py` | SQLite database file (keep it outside the code folder on a server) |
 | `HOST_USER` / `HOST_PASSWORD` | `gamemaster` / `honestmistake` | Host login |
-| `BIND`, `THREADS` | `127.0.0.1:8000`, `300` | gunicorn only |
+| `BIND`, `THREADS` | `127.0.0.1:8000`, `64` | gunicorn only |
 | `PORT`, `DEBUG` | `5000`, off | `python app.py` only |
 
 ### Data
