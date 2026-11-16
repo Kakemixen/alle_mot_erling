@@ -7,7 +7,9 @@ function startPlayer({ mode, oneToken }) {
   let state = null, viewKey = null, editing = false;
   let team = null; // { name, token } – teams only
 
-  try { team = JSON.parse(localStorage.getItem("team")); } catch {}
+  // sessionStorage is per tab, so several tabs in one browser can be different teams
+  // (handy for testing), while a page refresh keeps the team.
+  try { team = JSON.parse(sessionStorage.getItem("team")); } catch {}
 
   async function poll() {
     try {
@@ -64,7 +66,7 @@ function startPlayer({ mode, oneToken }) {
         if (!name) return;
         try {
           team = await api("/api/teams", { method: "POST", body: { name } });
-          try { localStorage.setItem("team", JSON.stringify(team)); } catch {}
+          try { sessionStorage.setItem("team", JSON.stringify(team)); } catch {}
           viewKey = null;
           poll();
         } catch (err) {
