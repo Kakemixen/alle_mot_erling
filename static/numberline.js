@@ -7,32 +7,71 @@
 //     { from, to } | null,     // highlighted range
 //     [values]                 // optional small unlabeled dots (e.g. each team's answer)
 //   )
+//
+// Markers and the range are always visible. Dots may widen the line only
+// until the range covers MIN_BAND_SHARE of it; dots further out are shown
+// as arrows at the edge (up to MAX_ARROWS stacked, then "+N").
 
 class NumberLine {
+  static PAD = 0.18;            // empty space on each side, as a share of the data span
+  static MIN_BAND_SHARE = 0.3;  // the highlighted range never gets smaller than this
+  static MAX_ARROWS = 5;
+
   constructor(el) {
     this.el = el;
     el.classList.add("nl");
-    el.innerHTML = `<div class="nl-band"></div><div class="nl-axis"></div>`;
+    el.innerHTML = `<div class="nl-band"></div><div class="nl-axis"></div>
+      <div class="nl-overflow left"></div><div class="nl-overflow right"></div>`;
     this.band = el.querySelector(".nl-band");
+    this.overflow = { left: el.querySelector(".nl-overflow.left"), right: el.querySelector(".nl-overflow.right") };
     this.markers = new Map();
     this.ticks = new Map();
     this.dots = [];
   }
 
-  update(markers, band, dots = []) {
-    const values = markers.map((m) => m.value).concat(dots);
-    if (band) values.push(band.from, band.to);
-    if (!values.length) return;
+  /**
+   * Work out the visible range. Pure function, so it can be tested without a DOM.
+   * Returns { lo, hi, visible: [dots on the line], left: n, right: n }.
+   */
+  static domain(values, band, dots) {
+    const required = band ? values.concat([band.from, band.to]) : values.slice();
+    if (!required.length) return null;
+    let lo = Math.min(...required), hi = Math.max(...required);
 
-    // Domain with some padding so labels don't hit the edges.
-    let lo = Math.min(...values), hi = Math.max(...values);
+    // How wide the data span may get: the range must stay >= MIN_BAND_SHARE
+    // of the visible (padded) line. Without a (non-empty) range – the 1 didn't
+    // answer or was spot on – use 40% of the answer's size as the reference.
+    const scale = 1 / NumberLine.MIN_BAND_SHARE / (1 + 2 * NumberLine.PAD);
+    const bandWidth = band ? Math.abs(band.to - band.from) : 0;
+    const ref = bandWidth > 1e-9 ? bandWidth
+              : Math.max(hi - lo, 2 * Math.max(Math.abs(values[0]) * 0.2, 1));
+    const maxSpan = Math.max(hi - lo, ref * scale);
+
+    // Include dots outside the required range, nearest first, while they fit.
+    const dist = (v) => (v < lo ? lo - v : v > hi ? v - hi : 0);
+    for (const v of dots.filter((v) => dist(v) > 0).sort((a, b) => dist(a) - dist(b))) {
+      const nlo = Math.min(lo, v), nhi = Math.max(hi, v);
+      if (nhi - nlo <= maxSpan) { lo = nlo; hi = nhi; }
+    }
+    const visible = dots.filter((v) => v >= lo && v <= hi);
+    const left = dots.filter((v) => v < lo).length;
+    const right = dots.filter((v) => v > hi).length;
+
+    // Padding so labels don't hit the edges.
     if (hi - lo < 1e-9) {
       const pad = Math.max(Math.abs(lo) * 0.2, 1);
       lo -= pad; hi += pad;
     } else {
-      const pad = (hi - lo) * 0.18;
+      const pad = (hi - lo) * NumberLine.PAD;
       lo -= pad; hi += pad;
     }
+    return { lo, hi, visible, left, right };
+  }
+
+  update(markers, band, dots = []) {
+    const d = NumberLine.domain(markers.map((m) => m.value), band, dots);
+    if (!d) return;
+    const { lo, hi } = d;
     const pos = (v) => `${((v - lo) / (hi - lo)) * 100}%`;
 
     // Ticks
@@ -82,7 +121,7 @@ class NumberLine {
     }
 
     // Dots: sorted, and stacked upwards when they would overlap.
-    const sorted = [...dots].sort((a, b) => a - b);
+    const sorted = [...d.visible].sort((a, b) => a - b);
     const width = this.el.clientWidth || 800;
     const minGap = 14 / width; // ~ one dot width, as a fraction of the line
     let groupStart = -Infinity, stack = 0;
@@ -100,6 +139,20 @@ class NumberLine {
       el.style.setProperty("--s", stack);
     });
     this.dots.splice(sorted.length).forEach((el) => el.remove());
+
+    // Arrows for dots beyond the edges.
+    for (const [side, count] of [["left", d.left], ["right", d.right]]) {
+      const el = this.overflow[side];
+      if (el.dataset.count === String(count)) continue;
+      el.dataset.count = count;
+      const arrows = Math.min(count, NumberLine.MAX_ARROWS);
+      let html = "";
+      for (let i = 0; i < arrows; i++) html += `<span class="nl-arrow" style="--s:${i}">${side === "left" ? "◀" : "▶"}</span>`;
+      if (count > arrows) html += `<span class="nl-more" style="--s:${arrows}">+${count - arrows}</span>`;
+      el.innerHTML = html;
+      el.title = `${count} answer${count === 1 ? "" : "s"} further ${side === "left" ? "below" : "above"}`;
+      el.classList.toggle("shown", count > 0);
+    }
   }
 
   appendFaded(cls, html, left) {

@@ -247,3 +247,12 @@ body.showcase main.stage { max-width: 1200px; padding-bottom: 110px; }
   opacity: 0; transition: left .9s cubic-bezier(.2, .8, .2, 1), margin-top .6s, opacity .6s;
 }
 .nl-dot.shown { opacity: .7; }
+
+/* answers beyond the edges of the number line */
+.nl-overflow { position: absolute; top: 50%; width: 0; z-index: 1; opacity: 0; transition: opacity .6s; }
+.nl-overflow.shown { opacity: 1; }
+.nl-overflow.left { left: -20px; }
+.nl-overflow.right { right: -20px; }
+.nl-arrow, .nl-more { position: absolute; color: var(--crowd); font-weight: 800; white-space: nowrap; }
+.nl-arrow { left: -8px; width: 16px; text-align: center; font-size: 14px; line-height: 16px; top: calc(-8px - var(--s) * 16px); }
+.nl-more { transform: translateX(-50%); font-size: .85rem; line-height: 16px; top: calc(-10px - var(--s) * 16px); }
