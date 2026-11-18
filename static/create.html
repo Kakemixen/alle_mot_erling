@@ -25,6 +25,9 @@
           <input type="text" id="q-unit" maxlength="20" placeholder="e.g. m, kr, years">
         </div>
       </div>
+      <label for="q-image">Picture <span class="muted">(optional, shown with the question)</span></label>
+      <input type="file" id="q-image" accept="image/jpeg,image/png,image/gif,image/webp">
+      <img id="q-preview" class="q-thumb" alt="" hidden>
       <div class="toolbar" style="margin-top:14px">
         <span class="spacer"></span>
         <button type="submit">Save question</button>
@@ -35,6 +38,7 @@
     <h2>Saved questions (<span id="q-count">0</span>)</h2>
     <p class="muted">Changes apply to the next game you start — a running game keeps its questions.</p>
     <div id="q-list"></div>
+    <input type="file" id="item-image" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
   </main>
 
   <script src="/common.js"></script>
@@ -42,22 +46,92 @@
     renderHeader("create");
     const $ = (id) => document.getElementById(id);
 
+    const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    const MAX_SIDE = 1920; // pixels; bigger pictures are scaled down before uploading
+
+    // Big photos (e.g. straight from a phone camera) are scaled down so the
+    // showcase and the phones load them quickly. GIFs are kept as they are,
+    // since they may be animated.
+    async function shrinkImage(file) {
+      if (file.type === "image/gif" || !window.createImageBitmap) return file;
+      let bitmap;
+      try { bitmap = await createImageBitmap(file); } catch { return file; }
+      const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+      if (scale === 1 && file.size <= 2 * 2 ** 20) return file;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const encode = (type) => new Promise((resolve) => canvas.toBlob(resolve, type, 0.85));
+      let blob = await encode("image/webp");
+      if (!blob || blob.type !== "image/webp") blob = await encode("image/jpeg"); // e.g. older Safari
+      return blob && (scale < 1 || blob.size < file.size) ? blob : file;
+    }
+
+    async function uploadImage(questionId, file) {
+      if (!IMAGE_TYPES.includes(file.type)) throw new Error("The picture must be a JPEG, PNG, GIF or WebP image.");
+      const image = await shrinkImage(file);
+      const res = await fetch(`/api/questions/${questionId}/image`, {
+        method: "PUT", headers: { "Content-Type": image.type }, body: image,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Upload failed (${res.status})`);
+      }
+    }
+
+    $("q-image").onchange = () => {
+      const file = $("q-image").files[0];
+      const preview = $("q-preview");
+      if (preview.src.startsWith("blob:")) URL.revokeObjectURL(preview.src);
+      preview.hidden = !file;
+      if (file) preview.src = URL.createObjectURL(file);
+      else preview.removeAttribute("src");
+    };
+
     $("q-form").onsubmit = async (e) => {
       e.preventDefault();
       $("form-error").textContent = "";
       const answer = parseNumber($("q-answer").value);
       if (answer === null) return ($("form-error").textContent = "The answer must be a number.");
+      const file = $("q-image").files[0];
+      if (file && !IMAGE_TYPES.includes(file.type)) {
+        return ($("form-error").textContent = "The picture must be a JPEG, PNG, GIF or WebP image.");
+      }
+      let q;
       try {
-        await api("/api/questions", {
+        q = await api("/api/questions", {
           method: "POST",
           body: { text: $("q-text").value, answer, unit: $("q-unit").value },
         });
-        $("q-form").reset();
-        $("q-text").focus();
-        loadQuestions();
       } catch (err) {
-        $("form-error").textContent = err.message;
+        return ($("form-error").textContent = err.message);
       }
+      $("q-form").reset();
+      $("q-image").onchange();
+      $("q-text").focus();
+      if (file) {
+        try {
+          await uploadImage(q.id, file);
+        } catch (err) {
+          $("form-error").textContent = `The question was saved, but not the picture: ${err.message}`;
+        }
+      }
+      loadQuestions();
+    };
+
+    // One hidden file input, shared by the "Add/Change picture" buttons in the list.
+    let imageFor = null;
+    $("item-image").onchange = async () => {
+      const file = $("item-image").files[0];
+      $("item-image").value = "";
+      if (!file || imageFor === null) return;
+      try {
+        await uploadImage(imageFor, file);
+      } catch (err) {
+        alert(err.message);
+      }
+      loadQuestions();
     };
 
     async function loadQuestions() {
@@ -65,9 +139,14 @@
       $("q-count").textContent = qs.length;
       $("q-list").innerHTML = qs.map((q, i) => `
         <div class="card q-item">
-          <div>
+          ${q.image ? `<img class="q-thumb" src="${esc(q.image)}" alt="">` : ""}
+          <div class="q-body">
             <strong>${i + 1}. ${esc(q.text)}</strong>
             <p class="success" style="margin:6px 0 0">Answer: ${esc(fmtUnit(q.answer, q.unit))}</p>
+            <div class="toolbar" style="margin-top:10px">
+              <button class="secondary small" data-image="${q.id}">${q.image ? "Change picture" : "Add picture"}</button>
+              ${q.image ? `<button class="secondary small" data-remove-image="${q.id}">Remove picture</button>` : ""}
+            </div>
           </div>
           <button class="danger" data-id="${q.id}">Delete</button>
         </div>`).join("") || `<p class="muted">No questions yet.</p>`;
@@ -75,6 +154,16 @@
         b.onclick = async () => {
           if (!confirm("Delete this question?")) return;
           await api(`/api/questions/${b.dataset.id}`, { method: "DELETE" });
+          loadQuestions();
+        };
+      });
+      document.querySelectorAll("#q-list button[data-image]").forEach((b) => {
+        b.onclick = () => { imageFor = Number(b.dataset.image); $("item-image").click(); };
+      });
+      document.querySelectorAll("#q-list button[data-remove-image]").forEach((b) => {
+        b.onclick = async () => {
+          if (!confirm("Remove the picture from this question?")) return;
+          await api(`/api/questions/${b.dataset.removeImage}/image`, { method: "DELETE" });
           loadQuestions();
         };
       });

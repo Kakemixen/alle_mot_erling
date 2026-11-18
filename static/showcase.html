@@ -58,6 +58,7 @@
       const g = state.game;
       const v = $("view");
       line = null;
+      v.classList.remove("revealing");
       if (g.phase === "lobby_one") {
         v.innerHTML = `
           <p class="kicker">Step 1 · ${esc(g.oneName)}</p>
@@ -86,8 +87,11 @@
       } else if (g.phase === "question" || g.phase === "reveal") {
         v.innerHTML = `
           <p class="kicker">Question ${g.qIndex + 1} of ${g.totalQuestions}</p>
-          <h1 class="question-big">${esc(state.current.text)}${state.current.unit
-            ? ` <span class="muted unit">(${esc(state.current.unit)})</span>` : ""}</h1>
+          <div class="q-head">
+            <h1 class="question-big">${esc(state.current.text)}${state.current.unit
+              ? ` <span class="muted unit">(${esc(state.current.unit)})</span>` : ""}</h1>
+            ${state.current.image ? `<img class="q-image" src="${esc(state.current.image)}" alt="">` : ""}
+          </div>
           <div id="q-status"></div>
           <div id="reveal" hidden>
             <div id="line"></div>
@@ -121,6 +125,7 @@
       } else if (g.phase === "reveal") {
         $("q-status").innerHTML = "";
         $("reveal").hidden = false;
+        $("view").classList.add("revealing"); // smaller picture, to make room for the number line
         updateReveal();
       }
     }

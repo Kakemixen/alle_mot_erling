@@ -86,6 +86,14 @@ CREATE TABLE IF NOT EXISTS answers (
     created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (game_id, question_id, player)
 );
+-- Optional picture per question. Kept apart from the questions so loading
+-- questions (on every state fetch) doesn't read the image data.
+CREATE TABLE IF NOT EXISTS question_images (
+    question_id INTEGER PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+    mime        TEXT    NOT NULL,
+    data        BLOB    NOT NULL,
+    version     TEXT    NOT NULL                -- changes with the picture, for caching
+);
 """
 
 SEED_QUESTIONS = [
@@ -102,25 +110,37 @@ SOLO_NAME = "Erling"  # the one playing against everyone, in every game
 HOST_USER = os.environ.get("HOST_USER", "gamemaster")
 HOST_PASSWORD = os.environ.get("HOST_PASSWORD", "honestmistake")
 HOST_PAGES = {"/create.html", "/showcase.html"}
-HOST_API = {"/api/game", "/api/game/next", "/api/links"}  # plus /api/questions…
+HOST_API = {"/api/game", "/api/game/next", "/api/links"}  # plus /api/questions… and /api/image/…
 LAST_REVEAL_STEP = 3
+
+# Pictures for questions. No SVG: it can contain scripts.
+IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = MAX_IMAGE_BYTES + 64 * 1024
 
 
 # ------------------------------------------------------------------ host password
+def is_host():
+    auth = request.authorization
+    return bool(auth and auth.username is not None and auth.password is not None
+                and secrets.compare_digest(auth.username, HOST_USER)
+                and secrets.compare_digest(auth.password, HOST_PASSWORD))
+
+
+def ask_for_host_password():
+    return Response("The host password is required for this page.", 401,
+                    {"WWW-Authenticate": 'Basic realm="Alle mot Erling host", charset="UTF-8"'})
+
+
 @app.before_request
 def require_host_password():
     """Ask for the host login (browser's built-in login prompt) on the host
     pages and on the API calls only they use."""
     path = request.path
-    if not (path in HOST_PAGES or path in HOST_API or path.startswith("/api/questions")):
+    if not (path in HOST_PAGES or path in HOST_API
+            or path.startswith("/api/questions") or path.startswith("/api/image/")):
         return None
-    auth = request.authorization
-    if (auth and auth.username is not None and auth.password is not None
-            and secrets.compare_digest(auth.username, HOST_USER)
-            and secrets.compare_digest(auth.password, HOST_PASSWORD)):
-        return None
-    return Response("The host password is required for this page.", 401,
-                    {"WWW-Authenticate": 'Basic realm="Alle mot Erling host", charset="UTF-8"'})
+    return None if is_host() else ask_for_host_password()
 
 
 # ------------------------------------------------------------------ live updates
@@ -262,8 +282,17 @@ def question_result(game, q):
 
 
 # ------------------------------------------------------------------- questions
+def image_url(question_id):
+    """URL of a question's picture, or None if it has none. The version in
+    the URL changes with the picture, so browsers may cache it."""
+    row = get_db().execute("SELECT version FROM question_images WHERE question_id = ?",
+                           (question_id,)).fetchone()
+    return f"/api/image/{question_id}?v={row['version']}" if row else None
+
+
 def question_dict(row):
-    return {"id": row["id"], "text": row["text"], "answer": row["answer"], "unit": row["unit"]}
+    return {"id": row["id"], "text": row["text"], "answer": row["answer"], "unit": row["unit"],
+            "image": image_url(row["id"])}
 
 
 @app.get("/api/questions")
@@ -297,6 +326,55 @@ def delete_question(qid):
     db.commit()
     notifier.bump()
     return "", 204
+
+
+@app.put("/api/questions/<int:qid>/image")
+def set_question_image(qid):
+    """Add or replace a question's picture. The body is the image file itself,
+    with its type as Content-Type."""
+    mime = (request.mimetype or "").lower()
+    if mime not in IMAGE_TYPES:
+        abort(400, "The picture must be a JPEG, PNG, GIF or WebP image")
+    data = request.get_data()
+    if not data:
+        abort(400, "The picture is empty")
+    if len(data) > MAX_IMAGE_BYTES:
+        abort(413)
+    db = get_db()
+    if db.execute("SELECT 1 FROM questions WHERE id = ?", (qid,)).fetchone() is None:
+        abort(404)
+    db.execute(
+        """INSERT INTO question_images (question_id, mime, data, version) VALUES (?, ?, ?, ?)
+           ON CONFLICT (question_id) DO UPDATE
+           SET mime = excluded.mime, data = excluded.data, version = excluded.version""",
+        (qid, mime, data, secrets.token_hex(4)),
+    )
+    db.commit()
+    notifier.bump()
+    row = db.execute("SELECT * FROM questions WHERE id = ?", (qid,)).fetchone()
+    return jsonify(question_dict(row))
+
+
+@app.delete("/api/questions/<int:qid>/image")
+def delete_question_image(qid):
+    db = get_db()
+    db.execute("DELETE FROM question_images WHERE question_id = ?", (qid,))
+    db.commit()
+    notifier.bump()
+    return "", 204
+
+
+@app.get("/api/image/<int:qid>")
+def question_image(qid):
+    """A question's picture. Only shown on the big screen, so host only."""
+    row = get_db().execute("SELECT mime, data FROM question_images WHERE question_id = ?",
+                           (qid,)).fetchone()
+    if row is None:
+        abort(404)
+    return Response(row["data"], mimetype=row["mime"], headers={
+        "Cache-Control": "private, max-age=86400",  # the URL changes with the picture
+        "X-Content-Type-Options": "nosniff",
+    })
 
 
 # ---------------------------------------------------------------- game control
@@ -453,7 +531,7 @@ def state():
     current = None
     if current_q is not None:
         current = {
-            "text": current_q["text"], "unit": current_q["unit"],
+            "text": current_q["text"], "unit": current_q["unit"], "image": image_url(current_q["id"]),
             "oneAnswered": "one" in answered,
             "teamsAnswered": sum(f"team:{t['id']}" in answered for t in teams),
         }
@@ -570,6 +648,12 @@ def qr_svg():
 @app.errorhandler(409)
 def client_error(err):
     return jsonify({"error": err.description}), err.code
+
+
+@app.errorhandler(413)
+def too_large(_err):
+    # Also raised by Flask itself for bodies over MAX_CONTENT_LENGTH.
+    return jsonify({"error": f"The picture is too big (max {MAX_IMAGE_BYTES // 2**20} MB)"}), 413
 
 
 @app.get("/")

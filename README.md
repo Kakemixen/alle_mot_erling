@@ -9,7 +9,7 @@ all team answers.
 
 | Page | URL | Purpose |
 |------|-----|---------|
-| Create   | `/create.html`      | Write questions with a numeric answer (and optional unit) |
+| Create   | `/create.html`      | Write questions with a numeric answer (and optional unit and picture) |
 | Showcase | `/showcase.html`    | The big screen – the host runs the whole game from here |
 | Join     | `/play.html`        | Phone page for teams (reached via the QR code on the showcase) |
 | Erling   | `/erling.html?token=…` | Phone page for Erling, only reachable via a secret link that changes every game |
@@ -21,7 +21,7 @@ The host presses **Next** on the showcase (or →/Page Down, so a presenter clic
 1. **Erling** – QR code/link for Erling, shows when Erling has opened it.
 2. **Teams** – QR code for teams and the list of teams that have joined. **Start quiz**.
 3. For each question:
-   1. Only the question is shown; Erling and the teams answer on their phones (they can change
+   1. Only the question (and its picture, if it has one) is shown; Erling and the teams answer on their phones (they can change
       their answer until the host locks it).
    2. The answers are revealed step by step on a number line:
       the correct answer → Erling's answer and the range everyone's average must land in to beat
@@ -109,7 +109,7 @@ Databases from the first (multiple-choice) version are kept as `*_v1` tables and
 
 ### Host password
 
-Create and Showcase (and the API calls only they use: managing questions, Next, New game and the
+Create and Showcase (and the API calls only they use: managing questions and pictures, Next, New game and the
 Erling's secret link) ask for a login via the browser's login prompt: user name `gamemaster`,
 password `honestmistake` (or `HOST_USER` / `HOST_PASSWORD`). This only keeps curious players out:
 the default is in the source code, and without HTTPS it travels unencrypted.
