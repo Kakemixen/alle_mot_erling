@@ -156,15 +156,6 @@ body.showcase main.stage { max-width: 1200px; padding-bottom: 110px; }
 .controls #next { font-size: 1.15rem; padding: 13px 26px; }
 .mini-score { font-weight: 800; font-size: 1.2rem; }
 
-.facts { display: grid; gap: 10px; margin-top: 10px; }
-.fact {
-  font-size: 1.35rem; padding: 12px 18px; border-radius: 12px;
-  background: var(--bg-2); border-left: 6px solid var(--line);
-}
-.fact.correct { border-color: var(--good); }
-.fact.one { border-color: var(--accent); }
-.fact.band { border-color: var(--gold); }
-.fact.crowd { border-color: var(--crowd); }
 .appear { animation: appear .6s ease-out both; }
 @keyframes appear { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
@@ -233,7 +224,6 @@ body.showcase main.stage { max-width: 1200px; padding-bottom: 110px; }
   .versus .score { font-size: 2.6rem; }
   .nl { margin: 10px 24px 0; }
   .nl-marker .label { font-size: .85rem; }
-  .fact { font-size: 1.1rem; }
   .controls { padding: 10px 16px; flex-wrap: wrap; }
   .summary { font-size: .9rem; }
 }

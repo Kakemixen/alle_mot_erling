@@ -24,7 +24,7 @@
     renderHeader("showcase");
 
     const $ = (id) => document.getElementById(id);
-    let state = null, viewKey = null, line = null, links = null, linksGame = null, factsKey = null, busy = false;
+    let state = null, viewKey = null, line = null, links = null, linksGame = null, verdictKey = null, busy = false;
 
     // ------------------------------------------------------------ polling
     async function poll() {
@@ -47,7 +47,7 @@
       const key = `${g.id}:${group}`;
       if (key !== viewKey) {
         viewKey = key;
-        factsKey = null;
+        verdictKey = null;
         buildView();
       }
       updateView();
@@ -92,7 +92,7 @@
           <div id="q-status"></div>
           <div id="reveal" hidden>
             <div id="line"></div>
-            <div class="facts" id="facts"></div>
+            <div id="verdict"></div>
           </div>`;
         line = new NumberLine($("line"));
       } else if (g.phase === "final") {
@@ -143,43 +143,20 @@
       }
       line.update(markers, band, step >= 3 ? c.teamValues : []);
 
-      // The text below the line only changes per step – rebuild it then so
-      // the fade-in animation runs once.
+      // Who got the point – built once per step so the fade-in runs once.
       const key = `${viewKey}:${step}`;
-      if (key === factsKey) return;
-      factsKey = key;
-      const facts = [`<div class="fact correct">Correct answer: <b>${u(c.correct)}</b></div>`];
-      if (step >= 2) {
-        if (c.one === null) {
-          facts.push(`<div class="fact one">${name} didn't answer — any answer from everyone wins!</div>`);
-        } else if (c.oneDistance === 0) {
-          facts.push(`<div class="fact one">${name} answered <b>${u(c.one)}</b> — spot on! 🎯</div>`,
-                     `<div class="fact band">Everyone can at best get a draw…</div>`);
-        } else {
-          facts.push(`<div class="fact one">${name} answered <b>${u(c.one)}</b> — ${u(c.oneDistance)} off</div>`,
-                     `<div class="fact band">To beat ${name}, everyone's average must be between
-                        <b>${u(c.correct - c.oneDistance)}</b> and <b>${u(c.correct + c.oneDistance)}</b></div>`);
-        }
+      if (key === verdictKey) return;
+      verdictKey = key;
+      if (step < 3) {
+        $("verdict").innerHTML = "";
+        return;
       }
-      if (step >= 3) {
-        facts.push(c.average === null
-          ? `<div class="fact crowd">No team answered this one.</div>`
-          : `<div class="fact crowd">Everyone's average: <b>${u(c.average)}</b> — ${u(c.averageDistance)} off
-               <span class="muted">(${c.teamAnswers} team${c.teamAnswers === 1 ? "" : "s"}${c.teamAnswers > 1
-                 ? `, answers from ${u(c.teamValues[0])} to ${u(c.teamValues[c.teamValues.length - 1])}
-                    — each small dot is one team` : ""})</span></div>`);
-        const verdict = {
-          one: `🏆 Point to ${name}!`,
-          crowd: "🏆 Point to everyone!",
-          draw: "🤝 Draw — no points",
-        }[c.winner] || "No answers — no points";
-        facts.push(`<p class="winner-banner ${c.winner || ""}">${verdict}</p>`);
-      }
-      $("facts").innerHTML = facts.join("");
-      // Only animate the newest facts
-      const all = $("facts").children;
-      const fresh = step === 1 ? 1 : step === 2 ? all.length - 1 : 2;
-      [...all].forEach((el, i) => { if (i >= all.length - fresh) el.classList.add("appear"); });
+      const verdict = {
+        one: `🏆 Point to ${name}!`,
+        crowd: "🏆 Point to everyone!",
+        draw: "🤝 Draw — no points",
+      }[c.winner] || "No answers — no points";
+      $("verdict").innerHTML = `<p class="winner-banner appear ${c.winner || ""}">${verdict}</p>`;
     }
 
     function buildFinal() {
