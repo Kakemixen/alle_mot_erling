@@ -63,7 +63,6 @@ p.lead { color: var(--muted); margin-top: 0; font-size: 1.1rem; }
 .kicker { text-transform: uppercase; letter-spacing: .12em; font-weight: 800; color: var(--muted); font-size: .85rem; margin: 0 0 8px; }
 
 .accent { color: var(--accent); }
-.crowd-c { color: var(--crowd); }
 .muted { color: var(--muted); }
 .error { color: var(--bad); font-weight: 600; min-height: 1.2em; }
 .success { color: var(--good); font-weight: 600; }
@@ -154,7 +153,6 @@ body.showcase main.stage { max-width: 1200px; padding-bottom: 110px; }
   border-top: 1px solid var(--line);
 }
 .controls #next { font-size: 1.15rem; padding: 13px 26px; }
-.mini-score { font-weight: 800; font-size: 1.2rem; }
 
 .appear { animation: appear .6s ease-out both; }
 @keyframes appear { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }

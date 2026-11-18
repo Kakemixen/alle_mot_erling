@@ -12,7 +12,6 @@
   </main>
 
   <footer class="controls">
-    <div class="mini-score" id="mini-score"></div>
     <span class="spacer"></span>
     <button class="secondary small" id="new-game">New game</button>
     <button id="next">Next</button>
@@ -208,9 +207,6 @@
       $("next").disabled = busy || (g.phase === "lobby" && g.totalQuestions === 0);
       $("next").title = g.phase === "lobby" && g.totalQuestions === 0 ? "Create some questions first" : "→ / Page Down";
       $("new-game").classList.toggle("primary", g.phase === "final");
-      $("mini-score").innerHTML = g.phase === "question" || g.phase === "reveal"
-        ? `<span class="accent">${esc(g.oneName)} ${state.score.one}</span> – <span class="crowd-c">${state.score.crowd} Everyone</span>`
-        : "";
     }
 
     async function next() {

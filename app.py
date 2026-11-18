@@ -441,18 +441,14 @@ def state():
             if r["player"] == "one":
                 one_answer = r["value"]
 
-    # Questions whose point has been shown on the big screen.
+    # The score is only shown at the very end, so it is only sent then.
+    results = score = None
     if phase == "final":
-        done = questions
-    elif phase in ("question", "reveal"):
-        done = questions[:idx] + ([current_q] if phase == "reveal" and step >= LAST_REVEAL_STEP and current_q else [])
-    else:
-        done = []
-    results = [question_result(game, q) for q in done]
-    score = {
-        "one": sum(r["winner"] == "one" for r in results),
-        "crowd": sum(r["winner"] == "crowd" for r in results),
-    }
+        results = [question_result(game, q) for q in questions]
+        score = {
+            "one": sum(r["winner"] == "one" for r in results),
+            "crowd": sum(r["winner"] == "crowd" for r in results),
+        }
 
     current = None
     if current_q is not None:
@@ -496,7 +492,7 @@ def state():
         "teams": [{"name": t["name"], "answered": f"team:{t['id']}" in answered} for t in teams],
         "current": current,
         "score": score,
-        "results": results if phase == "final" else None,
+        "results": results,
         "me": me,
         "oneValid": one_valid,
     })

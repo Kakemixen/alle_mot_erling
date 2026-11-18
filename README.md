@@ -26,7 +26,7 @@ The host presses **Next** on the showcase (or →/Page Down, so a presenter clic
    2. The answers are revealed step by step on a number line:
       the correct answer → Erling's answer and the range everyone's average must land in to beat
       Erling → everyone's average and who gets the point.
-4. **Final score** with a summary of every question. **New game** starts over (Erling plays every game).
+4. **Final score** with a summary of every question – the score is not shown before this. **New game** starts over (Erling plays every game).
 
 ## Running locally
 
