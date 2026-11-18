@@ -9,7 +9,7 @@ async function api(path, options = {}) {
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(data.error || `Request failed (${res.status})`);
+    const err = new Error(data.error || `Forespørselen feilet (${res.status})`);
     err.status = res.status;
     throw err;
   }
@@ -22,10 +22,11 @@ function esc(s) {
   }[c]));
 }
 
-// Format a number for display. Years and other 4-digit numbers are shown
-// without thousands separators ("2000", not "2,000").
+// Format a number for display, the Norwegian way ("170,86", "12 500").
+// Years and other 4-digit numbers are shown without thousands separators
+// ("2000", not "2 000").
 function fmt(v) {
-  return Number(v).toLocaleString("en", {
+  return Number(v).toLocaleString("nb", {
     maximumFractionDigits: 2,
     useGrouping: Math.abs(v) >= 10000,
   });
@@ -35,9 +36,10 @@ function fmtUnit(v, unit) {
   return unit ? `${fmt(v)} ${unit}` : fmt(v);
 }
 
-// Accept both "1.5" and the Danish "1,5".
+// Accept both "1.5" and the Norwegian "1,5", and spaces as thousands
+// separators ("12 500").
 function parseNumber(s) {
-  const v = Number(String(s).trim().replace(",", "."));
+  const v = Number(String(s).replace(/\s/g, "").replace(",", "."));
   return String(s).trim() !== "" && Number.isFinite(v) ? v : null;
 }
 
@@ -47,9 +49,9 @@ const qrSrc = (url) => `/api/qr.svg?data=${encodeURIComponent(url)}`;
 // { nav: false } shows just the logo as plain text, with no links (for players' phones).
 function renderHeader(active, { nav = true } = {}) {
   const links = [
-    ["create", "/create.html", "Create"],
-    ["showcase", "/showcase.html", "Showcase"],
-    ["play", "/play.html", "Join"],
+    ["create", "/create.html", "Lag spørsmål"],
+    ["showcase", "/showcase.html", "Storskjerm"],
+    ["play", "/play.html", "Bli med"],
   ];
   const header = document.createElement("header");
   header.className = "top";

@@ -38,26 +38,29 @@ function startPlayer({ mode, oneToken }) {
   }
 
   const header = () => mode === "one"
-    ? `<p class="kicker"><span class="accent">${esc(state.game.oneName)}</span> against everyone</p>`
-    : `<p class="kicker">Team ${esc(state.me.name)}</p>`;
+    ? `<p class="kicker"><span class="accent">${esc(state.game.oneName)}</span> mot alle</p>`
+    : `<p class="kicker">Lag ${esc(state.me.name)}</p>`;
+  // Erling is "du" (you), a team is "dere" (you, plural).
+  const You = mode === "one" ? "Du" : "Dere";
+  const your = mode === "one" ? "ditt" : "deres";
 
   const views = {
     invalid() {
       root.innerHTML = `<h1>Hmm…</h1>
-        <p class="error">This link for ${esc(state.game.oneName)} isn't valid for the current game. Ask the host for the new QR code.</p>`;
+        <p class="error">Denne lenken for ${esc(state.game.oneName)} gjelder ikke for dette spillet. Be verten om den nye QR-koden.</p>`;
     },
     over() {
-      root.innerHTML = `<h1>Game over</h1><p class="lead">Wait for the host to start a new game, then reload this page.</p>`;
+      root.innerHTML = `<h1>Spillet er over</h1><p class="lead">Vent til verten starter et nytt spill, og last inn siden på nytt.</p>`;
     },
     join() {
       const g = state.game;
       root.innerHTML = `
-        <h1>Join as a team</h1>
-        <p class="lead">Tonight it's everyone against <strong class="accent">${esc(g.oneName)}</strong>.</p>
+        <h1>Bli med som lag</h1>
+        <p class="lead">I kveld er det alle mot <strong class="accent">${esc(g.oneName)}</strong>.</p>
         <form id="join-form" class="card">
-          <label for="name">Team name</label>
+          <label for="name">Lagnavn</label>
           <input type="text" id="name" maxlength="30" autocomplete="off" required>
-          <div style="margin-top:14px"><button type="submit">Join</button></div>
+          <div style="margin-top:14px"><button type="submit">Bli med</button></div>
           <p class="error" id="err"></p>
         </form>`;
       document.getElementById("join-form").onsubmit = async (e) => {
@@ -76,36 +79,36 @@ function startPlayer({ mode, oneToken }) {
     },
     wait() {
       root.innerHTML = `${header()}
-        <h1>You're in! 🎉</h1>
+        <h1>${You} er med! 🎉</h1>
         <p class="lead">${mode === "one"
-          ? `Get ready, ${esc(state.game.oneName)} — it's you against everyone.`
-          : `Get ready to take on ${esc(state.game.oneName)}.`}
-          The questions will appear here when the host starts.</p>`;
+          ? `Gjør deg klar, ${esc(state.game.oneName)} — det er deg mot alle.`
+          : `Gjør dere klare til å ta opp kampen mot ${esc(state.game.oneName)}.`}
+          Spørsmålene dukker opp her når verten starter.</p>`;
     },
     q() {
       const g = state.game, c = state.current, me = state.me;
-      const head = `${header()}<p class="muted">Question ${g.qIndex + 1} of ${g.totalQuestions}</p>
+      const head = `${header()}<p class="muted">Spørsmål ${g.qIndex + 1} av ${g.totalQuestions}</p>
         <p class="question-text">${esc(c.text)}</p>`;
       if (me.answer !== null && !editing) {
         root.innerHTML = `${head}
           <div class="card answer-card">
-            <p class="muted">Your answer</p>
+            <p class="muted">Svaret ${your}</p>
             <p class="answer-big">${esc(fmtUnit(me.answer, c.unit))}</p>
-            <button class="secondary" id="change">Change answer</button>
+            <button class="secondary" id="change">Endre svar</button>
           </div>
-          <p class="muted">You can change it until the host locks the answers.</p>`;
+          <p class="muted">${You} kan endre det til verten låser svarene.</p>`;
         document.getElementById("change").onclick = () => { editing = true; viewKey = null; render(); };
         return;
       }
       root.innerHTML = `${head}
         <form id="answer-form" class="card">
-          <label for="value">Your answer${c.unit ? ` (${esc(c.unit)})` : ""}</label>
+          <label for="value">Svaret ${your}${c.unit ? ` (${esc(c.unit)})` : ""}</label>
           <div class="row">
             <input type="text" id="value" inputmode="decimal" autocomplete="off" required
-                   value="${me.answer !== null ? esc(fmt(me.answer).replace(/,/g, "")) : ""}">
+                   value="${me.answer !== null ? esc(String(me.answer).replace(".", ",")) : ""}">
             ${c.unit ? `<span class="muted">${esc(c.unit)}</span>` : ""}
           </div>
-          <div style="margin-top:14px"><button type="submit">Submit answer</button></div>
+          <div style="margin-top:14px"><button type="submit">Send svar</button></div>
           <p class="error" id="err"></p>
         </form>`;
       const input = document.getElementById("value");
@@ -114,7 +117,7 @@ function startPlayer({ mode, oneToken }) {
         e.preventDefault();
         const value = parseNumber(input.value);
         if (value === null) {
-          document.getElementById("err").textContent = "Please enter a number.";
+          document.getElementById("err").textContent = "Skriv inn et tall.";
           return;
         }
         try {
@@ -135,15 +138,15 @@ function startPlayer({ mode, oneToken }) {
       const c = state.current, me = state.me;
       editing = false;
       root.innerHTML = `${header()}
-        <h1>Answers locked 🔒</h1>
-        <p class="lead">${me.answer === null ? "You didn't answer this one."
-          : `You answered <strong>${esc(fmtUnit(me.answer, c.unit))}</strong>.`}</p>
-        <p class="lead">Eyes on the big screen! 📺</p>`;
+        <h1>Svarene er låst 🔒</h1>
+        <p class="lead">${me.answer === null ? `${You} svarte ikke på dette.`
+          : `${You} svarte <strong>${esc(fmtUnit(me.answer, c.unit))}</strong>.`}</p>
+        <p class="lead">Følg med på storskjermen! 📺</p>`;
     },
     final() {
       root.innerHTML = `${header()}
-        <h1>That's a wrap!</h1>
-        <p class="lead">See the final score on the big screen. 🏆</p>`;
+        <h1>Det var det!</h1>
+        <p class="lead">Se sluttresultatet på storskjermen. 🏆</p>`;
     },
   };
 

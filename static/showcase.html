@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="nb">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quiz Showcase</title>
+  <title>Storskjerm</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="showcase">
   <main class="stage">
-    <div id="view"><p class="muted">Loading…</p></div>
+    <div id="view"><p class="muted">Laster…</p></div>
   </main>
 
   <footer class="controls">
     <span class="spacer"></span>
-    <button class="secondary small" id="new-game">New game</button>
-    <button id="next">Next</button>
+    <button class="secondary small" id="new-game">Nytt spill</button>
+    <button id="next">Neste</button>
   </footer>
 
   <script src="/common.js"></script>
@@ -61,24 +61,24 @@
       v.classList.remove("revealing");
       if (g.phase === "lobby_one") {
         v.innerHTML = `
-          <p class="kicker">Step 1 · ${esc(g.oneName)}</p>
-          <h1 class="huge">Tonight: everyone against <span class="accent">${esc(g.oneName)}</span></h1>
+          <p class="kicker">Steg 1 · ${esc(g.oneName)}</p>
+          <h1 class="huge">I kveld: alle mot <span class="accent">${esc(g.oneName)}</span></h1>
           <div class="qr-block">
-            <img class="qr" src="${qrSrc(links.one)}" alt="QR code for ${esc(g.oneName)}">
+            <img class="qr" src="${qrSrc(links.one)}" alt="QR-kode for ${esc(g.oneName)}">
             <div>
-              <p class="lead">Only <strong>${esc(g.oneName)}</strong> scans this code.</p>
+              <p class="lead">Bare <strong>${esc(g.oneName)}</strong> skal skanne denne koden.</p>
               <a class="link" href="${esc(links.one)}" target="_blank">${esc(links.one)}</a>
               <p class="status" id="one-status"></p>
             </div>
           </div>`;
       } else if (g.phase === "lobby") {
         v.innerHTML = `
-          <p class="kicker">Step 2 · Teams</p>
-          <h1 class="huge">Everyone against <span class="accent">${esc(g.oneName)}</span></h1>
+          <p class="kicker">Steg 2 · Lag</p>
+          <h1 class="huge">Alle mot <span class="accent">${esc(g.oneName)}</span></h1>
           <div class="qr-block">
-            <img class="qr" src="${qrSrc(links.crowd)}" alt="QR code to join as a team">
+            <img class="qr" src="${qrSrc(links.crowd)}" alt="QR-kode for å bli med som lag">
             <div>
-              <p class="lead">Scan to join as a team.</p>
+              <p class="lead">Skann for å bli med som lag.</p>
               <a class="link" href="${esc(links.crowd)}" target="_blank">${esc(links.crowd)}</a>
               <p class="status" id="teams-count"></p>
               <div class="chips" id="teams"></div>
@@ -86,7 +86,7 @@
           </div>`;
       } else if (g.phase === "question" || g.phase === "reveal") {
         v.innerHTML = `
-          <p class="kicker">Question ${g.qIndex + 1} of ${g.totalQuestions}</p>
+          <p class="kicker">Spørsmål ${g.qIndex + 1} av ${g.totalQuestions}</p>
           <div class="q-head">
             <h1 class="question-big">${esc(state.current.text)}${state.current.unit
               ? ` <span class="muted unit">(${esc(state.current.unit)})</span>` : ""}</h1>
@@ -107,18 +107,18 @@
       const g = state.game;
       if (g.phase === "lobby_one") {
         $("one-status").innerHTML = g.oneJoined
-          ? `<span class="success">✓ ${esc(g.oneName)} is ready!</span>`
-          : `<span class="muted">Waiting for ${esc(g.oneName)} to open the link…</span>`;
+          ? `<span class="success">✓ ${esc(g.oneName)} er klar!</span>`
+          : `<span class="muted">Venter på at ${esc(g.oneName)} åpner lenken…</span>`;
       } else if (g.phase === "lobby") {
         const n = state.teams.length;
-        $("teams-count").textContent = n ? `${n} team${n === 1 ? "" : "s"} joined` : "Waiting for teams…";
+        $("teams-count").textContent = n ? `${n} lag er med` : "Venter på lag…";
         $("teams").innerHTML = state.teams.map((t) => `<span class="chip">${esc(t.name)}</span>`).join("");
       } else if (g.phase === "question") {
         const c = state.current;
         $("q-status").innerHTML = `
           <p class="status">
             <span class="${c.oneAnswered ? "success" : "muted"}">${esc(g.oneName)} ${c.oneAnswered ? "✓" : "…"}</span>
-            &nbsp;·&nbsp; ${c.teamsAnswered} of ${state.teams.length} teams answered
+            &nbsp;·&nbsp; ${c.teamsAnswered} av ${state.teams.length} lag har svart
           </p>
           <div class="chips">${state.teams.map((t) =>
             `<span class="chip ${t.answered ? "done" : ""}">${esc(t.name)}${t.answered ? " ✓" : ""}</span>`).join("")}</div>`;
@@ -134,7 +134,7 @@
       const g = state.game, c = state.current, step = g.revealStep, name = esc(g.oneName);
       const u = (v) => esc(fmtUnit(v, c.unit));
       const markers = [{ key: "correct", value: c.correct, cls: "correct", side: "bottom",
-                         label: `Correct<br><b>${u(c.correct)}</b>` }];
+                         label: `Riktig svar<br><b>${u(c.correct)}</b>` }];
       let band = null;
       if (step >= 2 && c.one !== null) {
         markers.push({ key: "one", value: c.one, cls: "one", side: "top", row: 0,
@@ -143,7 +143,7 @@
       }
       if (step >= 3 && c.average !== null) {
         markers.push({ key: "avg", value: c.average, cls: "crowd", side: "top", row: 1,
-                       label: `Everyone (avg.)<br><b>${u(c.average)}</b>` });
+                       label: `Alle (snitt)<br><b>${u(c.average)}</b>` });
       }
       line.update(markers, band, step >= 3 ? c.teamValues : []);
 
@@ -156,37 +156,37 @@
         return;
       }
       const verdict = {
-        one: `🏆 Point to ${name}!`,
-        crowd: "🏆 Point to everyone!",
-        draw: "🤝 Draw — no points",
-      }[c.winner] || "No answers — no points";
+        one: `🏆 Poeng til ${name}!`,
+        crowd: "🏆 Poeng til alle!",
+        draw: "🤝 Uavgjort — ingen poeng",
+      }[c.winner] || "Ingen svar — ingen poeng";
       $("verdict").innerHTML = `<p class="winner-banner appear ${c.winner || ""}">${verdict}</p>`;
     }
 
     function buildFinal() {
       const g = state.game, s = state.score, name = esc(g.oneName);
-      const banner = s.one > s.crowd ? `🏆 ${name} beats everyone!`
-                   : s.one < s.crowd ? "🏆 Everyone wins!" : "🤝 It's a draw!";
+      const banner = s.one > s.crowd ? `🏆 ${name} slo alle!`
+                   : s.one < s.crowd ? "🏆 Alle vant!" : "🤝 Uavgjort!";
       const rows = state.results.map((r, i) => {
         const u = (v) => (v === null ? "—" : esc(fmtUnit(v, r.unit)));
-        const point = { one: name, crowd: "Everyone", draw: "Draw" }[r.winner] || "—";
+        const point = { one: name, crowd: "Alle", draw: "Uavgjort" }[r.winner] || "—";
         return `<tr><td>${i + 1}. ${esc(r.text)}</td><td>${u(r.correct)}</td>
                 <td class="${r.winner === "one" ? "win" : ""}">${u(r.one)}</td>
                 <td class="${r.winner === "crowd" ? "win" : ""}">${u(r.average)}</td><td>${point}</td></tr>`;
       }).join("");
       $("view").innerHTML = `
-        <p class="kicker">Final score</p>
+        <p class="kicker">Sluttresultat</p>
         <div class="versus">
-          <div class="side one"><div class="muted">Alone</div><div><strong>${name}</strong></div>
+          <div class="side one"><div class="muted">Alene</div><div><strong>${name}</strong></div>
             <div class="score">${s.one}</div></div>
           <div class="vs">VS</div>
-          <div class="side crowd"><div class="muted">Everyone</div>
-            <div><strong>${state.teams.length} team${state.teams.length === 1 ? "" : "s"}</strong></div>
+          <div class="side crowd"><div class="muted">Alle</div>
+            <div><strong>${state.teams.length} lag</strong></div>
             <div class="score">${s.crowd}</div></div>
         </div>
         <p class="winner-banner appear">${banner}</p>
         <table class="summary">
-          <thead><tr><th>Question</th><th>Correct</th><th>${name}</th><th>Everyone (avg.)</th><th>Point</th></tr></thead>
+          <thead><tr><th>Spørsmål</th><th>Riktig svar</th><th>${name}</th><th>Alle (snitt)</th><th>Poeng</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>`;
     }
@@ -194,13 +194,13 @@
     // ------------------------------------------------------------ controls
     function nextLabel() {
       const g = state.game;
-      if (g.phase === "lobby_one") return "Continue to teams →";
-      if (g.phase === "lobby") return "Start quiz ▶";
-      if (g.phase === "question") return "Lock answers →";
+      if (g.phase === "lobby_one") return "Videre til lagene →";
+      if (g.phase === "lobby") return "Start quizen ▶";
+      if (g.phase === "question") return "Lås svarene →";
       if (g.phase === "reveal") {
-        if (g.revealStep === 1) return `Show ${g.oneName}'s answer →`;
-        if (g.revealStep === 2) return "Show everyone's average →";
-        return g.qIndex + 1 < g.totalQuestions ? "Next question →" : "Final score →";
+        if (g.revealStep === 1) return `Vis svaret til ${g.oneName} →`;
+        if (g.revealStep === 2) return "Vis snittet til alle →";
+        return g.qIndex + 1 < g.totalQuestions ? "Neste spørsmål →" : "Sluttresultat →";
       }
       return null;
     }
@@ -210,7 +210,7 @@
       $("next").hidden = !label;
       $("next").textContent = label || "";
       $("next").disabled = busy || (g.phase === "lobby" && g.totalQuestions === 0);
-      $("next").title = g.phase === "lobby" && g.totalQuestions === 0 ? "Create some questions first" : "→ / Page Down";
+      $("next").title = g.phase === "lobby" && g.totalQuestions === 0 ? "Lag noen spørsmål først" : "→ / Page Down";
       $("new-game").classList.toggle("primary", g.phase === "final");
     }
 
@@ -242,7 +242,7 @@
     $("new-game").onclick = async () => {
       // Starting over can't be undone, so check it wasn't a mis-click.
       if (state && state.game.phase !== "final" &&
-          !confirm("Start a new game? The current game ends and everyone has to join again.")) return;
+          !confirm("Starte et nytt spill? Dette spillet avsluttes, og alle må bli med på nytt.")) return;
       try {
         await api("/api/game", { method: "POST" });
       } catch (err) {

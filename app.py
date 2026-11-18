@@ -97,9 +97,9 @@ CREATE TABLE IF NOT EXISTS question_images (
 """
 
 SEED_QUESTIONS = [
-    ("How tall is Møllehøj, Denmark's highest natural point?", 170.86, "m"),
-    ("In which year did the Øresund Bridge open?", 2000, ""),
-    ("How long is the main span of the Great Belt East Bridge?", 1624, "m"),
+    ("Hvor høy er Galdhøpiggen, Norges høyeste fjell?", 2469, "moh."),
+    ("Hvilket år ble Oslo lufthavn Gardermoen åpnet?", 1998, ""),
+    ("Hvor lang er Lærdalstunnelen, verdens lengste veitunnel?", 24.5, "km"),
 ]
 
 PHASES = ("lobby_one", "lobby", "question", "reveal", "final")
@@ -128,7 +128,7 @@ def is_host():
 
 
 def ask_for_host_password():
-    return Response("The host password is required for this page.", 401,
+    return Response("Denne siden krever vertspassordet.", 401,
                     {"WWW-Authenticate": 'Basic realm="Alle mot Erling host", charset="UTF-8"'})
 
 
@@ -233,7 +233,7 @@ def game_questions(game):
 
 def parse_number(raw):
     try:
-        value = float(str(raw).strip().replace(",", "."))
+        value = float("".join(str(raw).split()).replace(",", "."))
     except ValueError:
         return None
     return value if math.isfinite(value) else None
@@ -308,9 +308,9 @@ def create_question():
     unit = str(data.get("unit", "")).strip()[:20]
     answer = parse_number(data.get("answer", ""))
     if not text:
-        abort(400, "Question text is required")
+        abort(400, "Spørsmålet mangler tekst")
     if answer is None:
-        abort(400, "The answer must be a number")
+        abort(400, "Svaret må være et tall")
     db = get_db()
     cur = db.execute("INSERT INTO questions (text, answer, unit) VALUES (?, ?, ?)", (text, answer, unit))
     db.commit()
@@ -334,10 +334,10 @@ def set_question_image(qid):
     with its type as Content-Type."""
     mime = (request.mimetype or "").lower()
     if mime not in IMAGE_TYPES:
-        abort(400, "The picture must be a JPEG, PNG, GIF or WebP image")
+        abort(400, "Bildet må være JPEG, PNG, GIF eller WebP")
     data = request.get_data()
     if not data:
-        abort(400, "The picture is empty")
+        abort(400, "Bildefilen er tom")
     if len(data) > MAX_IMAGE_BYTES:
         abort(413)
     db = get_db()
@@ -407,7 +407,7 @@ def next_step():
     elif phase == "lobby":
         ids = [r["id"] for r in db.execute("SELECT id FROM questions ORDER BY id")]
         if not ids:
-            abort(400, "Create some questions first")
+            abort(400, "Lag noen spørsmål først")
         phase, idx, step, question_ids = "question", 0, 0, json.dumps(ids)
     elif phase == "question":
         phase, step = "reveal", 1
@@ -433,7 +433,7 @@ def one_join():
     data = request.get_json(silent=True) or {}
     game = current_game()
     if not check_one_token(game, data.get("token")):
-        abort(403, f"This link for {game['one_name']} is not valid for the current game")
+        abort(403, f"Denne lenken for {game['one_name']} gjelder ikke for dette spillet")
     db = get_db()
     db.execute("UPDATE games SET one_joined = 1 WHERE id = ?", (game["id"],))
     db.commit()
@@ -447,18 +447,18 @@ def join_team():
     name = str(data.get("name", "")).strip()[:30]
     game = current_game()
     if not name:
-        abort(400, "Team name is required")
+        abort(400, "Lagnavn mangler")
     if game["phase"] == "final":
-        abort(409, "This game is over – wait for the host to start a new one")
+        abort(409, "Dette spillet er over – vent til verten starter et nytt")
     if name.casefold() == game["one_name"].casefold():
-        abort(400, f"{game['one_name']} plays against everyone – please pick another team name")
+        abort(400, f"{game['one_name']} spiller mot alle – velg et annet lagnavn")
     token = new_token()
     db = get_db()
     try:
         db.execute("INSERT INTO teams (game_id, name, token) VALUES (?, ?, ?)", (game["id"], name, token))
         db.commit()
     except sqlite3.IntegrityError:
-        abort(409, "That team name is already taken")
+        abort(409, "Det lagnavnet er allerede tatt")
     notifier.bump()
     return jsonify({"name": name, "token": token}), 201
 
@@ -468,22 +468,22 @@ def submit_answer():
     data = request.get_json(silent=True) or {}
     game = current_game()
     if game["phase"] != "question" or data.get("qIndex") != game["q_index"]:
-        abort(409, "Answers for this question are locked")
+        abort(409, "Svarene på dette spørsmålet er låst")
     value = parse_number(data.get("value", ""))
     if value is None:
-        abort(400, "Please enter a number")
+        abort(400, "Skriv inn et tall")
     if data.get("oneToken") is not None:
         if not check_one_token(game, data["oneToken"]):
-            abort(403, f"This link for {game['one_name']} is not valid for the current game")
+            abort(403, f"Denne lenken for {game['one_name']} gjelder ikke for dette spillet")
         player = "one"
     else:
         team = team_by_token(game, data.get("teamToken"))
         if team is None:
-            abort(403, "Unknown team – please join again")
+            abort(403, "Ukjent lag – bli med på nytt")
         player = f"team:{team['id']}"
     questions = game_questions(game)
     if game["q_index"] >= len(questions):
-        abort(409, "This question no longer exists")
+        abort(409, "Dette spørsmålet finnes ikke lenger")
     db = get_db()
     db.execute(
         """INSERT INTO answers (game_id, question_id, player, value) VALUES (?, ?, ?, ?)
@@ -653,7 +653,7 @@ def client_error(err):
 @app.errorhandler(413)
 def too_large(_err):
     # Also raised by Flask itself for bodies over MAX_CONTENT_LENGTH.
-    return jsonify({"error": f"The picture is too big (max {MAX_IMAGE_BYTES // 2**20} MB)"}), 413
+    return jsonify({"error": f"Bildet er for stort (maks {MAX_IMAGE_BYTES // 2**20} MB)"}), 413
 
 
 @app.get("/")

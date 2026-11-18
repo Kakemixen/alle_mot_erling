@@ -1,42 +1,42 @@
 <!doctype html>
-<html lang="en">
+<html lang="nb">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Create Questions</title>
+  <title>Lag spørsmål</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <main>
-    <h1>Create questions</h1>
-    <p class="lead">Every question has a number as its answer. Whoever gets closest wins the point:
-      Erling, or the average of all the teams.</p>
+    <h1>Lag spørsmål</h1>
+    <p class="lead">Hvert spørsmål har et tall som svar. Den som kommer nærmest, får poenget:
+      Erling, eller snittet av alle lagene.</p>
 
     <form id="q-form" class="card">
-      <label for="q-text">Question</label>
-      <input type="text" id="q-text" placeholder="e.g. How many steps are there up the Round Tower?" required>
+      <label for="q-text">Spørsmål</label>
+      <input type="text" id="q-text" placeholder="f.eks. Hvor høy er Galdhøpiggen?" required>
       <div class="form-grid">
         <div>
-          <label for="q-answer">Correct answer</label>
-          <input type="text" id="q-answer" inputmode="decimal" placeholder="e.g. 209.5" required>
+          <label for="q-answer">Riktig svar</label>
+          <input type="text" id="q-answer" inputmode="decimal" placeholder="f.eks. 2469" required>
         </div>
         <div>
-          <label for="q-unit">Unit <span class="muted">(optional)</span></label>
-          <input type="text" id="q-unit" maxlength="20" placeholder="e.g. m, kr, years">
+          <label for="q-unit">Enhet <span class="muted">(valgfritt)</span></label>
+          <input type="text" id="q-unit" maxlength="20" placeholder="f.eks. m, kr, år">
         </div>
       </div>
-      <label for="q-image">Picture <span class="muted">(optional, shown with the question)</span></label>
+      <label for="q-image">Bilde <span class="muted">(valgfritt, vises sammen med spørsmålet)</span></label>
       <input type="file" id="q-image" accept="image/jpeg,image/png,image/gif,image/webp">
       <img id="q-preview" class="q-thumb" alt="" hidden>
       <div class="toolbar" style="margin-top:14px">
         <span class="spacer"></span>
-        <button type="submit">Save question</button>
+        <button type="submit">Lagre spørsmål</button>
       </div>
       <p class="error" id="form-error"></p>
     </form>
 
-    <h2>Saved questions (<span id="q-count">0</span>)</h2>
-    <p class="muted">Changes apply to the next game you start — a running game keeps its questions.</p>
+    <h2>Lagrede spørsmål (<span id="q-count">0</span>)</h2>
+    <p class="muted">Endringer gjelder fra neste spill du starter — et pågående spill beholder spørsmålene sine.</p>
     <div id="q-list"></div>
     <input type="file" id="item-image" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
   </main>
@@ -69,14 +69,14 @@
     }
 
     async function uploadImage(questionId, file) {
-      if (!IMAGE_TYPES.includes(file.type)) throw new Error("The picture must be a JPEG, PNG, GIF or WebP image.");
+      if (!IMAGE_TYPES.includes(file.type)) throw new Error("Bildet må være JPEG, PNG, GIF eller WebP.");
       const image = await shrinkImage(file);
       const res = await fetch(`/api/questions/${questionId}/image`, {
         method: "PUT", headers: { "Content-Type": image.type }, body: image,
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Upload failed (${res.status})`);
+        throw new Error(data.error || `Opplastingen feilet (${res.status})`);
       }
     }
 
@@ -93,10 +93,10 @@
       e.preventDefault();
       $("form-error").textContent = "";
       const answer = parseNumber($("q-answer").value);
-      if (answer === null) return ($("form-error").textContent = "The answer must be a number.");
+      if (answer === null) return ($("form-error").textContent = "Svaret må være et tall.");
       const file = $("q-image").files[0];
       if (file && !IMAGE_TYPES.includes(file.type)) {
-        return ($("form-error").textContent = "The picture must be a JPEG, PNG, GIF or WebP image.");
+        return ($("form-error").textContent = "Bildet må være JPEG, PNG, GIF eller WebP.");
       }
       let q;
       try {
@@ -114,7 +114,7 @@
         try {
           await uploadImage(q.id, file);
         } catch (err) {
-          $("form-error").textContent = `The question was saved, but not the picture: ${err.message}`;
+          $("form-error").textContent = `Spørsmålet ble lagret, men ikke bildet: ${err.message}`;
         }
       }
       loadQuestions();
@@ -142,17 +142,17 @@
           ${q.image ? `<img class="q-thumb" src="${esc(q.image)}" alt="">` : ""}
           <div class="q-body">
             <strong>${i + 1}. ${esc(q.text)}</strong>
-            <p class="success" style="margin:6px 0 0">Answer: ${esc(fmtUnit(q.answer, q.unit))}</p>
+            <p class="success" style="margin:6px 0 0">Svar: ${esc(fmtUnit(q.answer, q.unit))}</p>
             <div class="toolbar" style="margin-top:10px">
-              <button class="secondary small" data-image="${q.id}">${q.image ? "Change picture" : "Add picture"}</button>
-              ${q.image ? `<button class="secondary small" data-remove-image="${q.id}">Remove picture</button>` : ""}
+              <button class="secondary small" data-image="${q.id}">${q.image ? "Bytt bilde" : "Legg til bilde"}</button>
+              ${q.image ? `<button class="secondary small" data-remove-image="${q.id}">Fjern bilde</button>` : ""}
             </div>
           </div>
-          <button class="danger" data-id="${q.id}">Delete</button>
-        </div>`).join("") || `<p class="muted">No questions yet.</p>`;
+          <button class="danger" data-id="${q.id}">Slett</button>
+        </div>`).join("") || `<p class="muted">Ingen spørsmål ennå.</p>`;
       document.querySelectorAll("#q-list button[data-id]").forEach((b) => {
         b.onclick = async () => {
-          if (!confirm("Delete this question?")) return;
+          if (!confirm("Slette dette spørsmålet?")) return;
           await api(`/api/questions/${b.dataset.id}`, { method: "DELETE" });
           loadQuestions();
         };
@@ -162,7 +162,7 @@
       });
       document.querySelectorAll("#q-list button[data-remove-image]").forEach((b) => {
         b.onclick = async () => {
-          if (!confirm("Remove the picture from this question?")) return;
+          if (!confirm("Fjerne bildet fra dette spørsmålet?")) return;
           await api(`/api/questions/${b.dataset.removeImage}/image`, { method: "DELETE" });
           loadQuestions();
         };

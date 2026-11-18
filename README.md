@@ -7,26 +7,29 @@ all team answers.
 
 ## Pages
 
+The user interface is in Norwegian (bokmål), since that's the language the quiz is held in.
+Button names are given in Norwegian below, with the English meaning where it helps.
+
 | Page | URL | Purpose |
 |------|-----|---------|
-| Create   | `/create.html`      | Write questions with a numeric answer (and optional unit and picture) |
-| Showcase | `/showcase.html`    | The big screen – the host runs the whole game from here |
-| Join     | `/play.html`        | Phone page for teams (reached via the QR code on the showcase) |
+| Create (*Lag spørsmål*) | `/create.html`      | Write questions with a numeric answer (and optional unit and picture) |
+| Showcase (*Storskjerm*) | `/showcase.html`    | The big screen – the host runs the whole game from here |
+| Join (*Bli med*) | `/play.html`        | Phone page for teams (reached via the QR code on the showcase) |
 | Erling   | `/erling.html?token=…` | Phone page for Erling, only reachable via a secret link that changes every game |
 
 ## Game flow
 
-The host presses **Next** on the showcase (or →/Page Down, so a presenter clicker works):
+The host presses **Neste** (next) on the showcase (or →/Page Down, so a presenter clicker works):
 
 1. **Erling** – QR code/link for Erling, shows when Erling has opened it.
-2. **Teams** – QR code for teams and the list of teams that have joined. **Start quiz**.
+2. **Teams** – QR code for teams and the list of teams that have joined. **Start quizen**.
 3. For each question:
    1. Only the question (and its picture, if it has one) is shown; Erling and the teams answer on their phones (they can change
       their answer until the host locks it).
    2. The answers are revealed step by step on a number line:
       the correct answer → Erling's answer and the range everyone's average must land in to beat
       Erling → everyone's average and who gets the point.
-4. **Final score** with a summary of every question – the score is not shown before this. **New game** starts over (Erling plays every game).
+4. **Final score** with a summary of every question – the score is not shown before this. **Nytt spill** (new game) starts over (Erling plays every game).
 
 ## Running locally
 

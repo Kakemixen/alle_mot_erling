@@ -153,7 +153,7 @@ class NumberLine {
       for (let i = 0; i < arrows; i++) html += `<span class="nl-arrow" style="--s:${i}">${side === "left" ? "◀" : "▶"}</span>`;
       if (count > arrows) html += `<span class="nl-more" style="--s:${arrows}">+${count - arrows}</span>`;
       el.innerHTML = html;
-      el.title = `${count} answer${count === 1 ? "" : "s"} further ${side === "left" ? "below" : "above"}`;
+      el.title = `${count} svar ${side === "left" ? "under" : "over"} det som vises`;
       el.classList.toggle("shown", count > 0);
     }
   }
