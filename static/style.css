@@ -120,14 +120,20 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 #q-preview { margin-top: 10px; }
 input[type="file"] { color: var(--muted); }
 
-/* ---- question pictures */
-.q-head { display: flex; gap: 28px; align-items: flex-start; }
-.q-head .question-big { flex: 1; }
+/* ---- question pictures
+   On the showcase the page is a column the height of the screen: question
+   on top, then the picture taking all the height that is left, and the
+   answer status (or number line) at the bottom, just above the controls. */
+body.showcase { display: flex; flex-direction: column; }
+body.showcase main.stage { flex: 1; width: 100%; display: flex; flex-direction: column; }
+#view.asking { flex: 1; display: flex; flex-direction: column; }
+.q-head { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .q-head .q-image {
-  display: block; max-width: 45%; max-height: 52vh; margin: 4px 0 20px;
-  border-radius: var(--radius); object-fit: contain; transition: max-height .6s;
+  flex: 1 1 0; min-height: 25vh; width: 100%; margin: 0 0 20px;
+  object-fit: contain;
 }
-.revealing .q-head .q-image { max-height: 24vh; }
+#q-status:not(:empty) { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line); }
+#q-status .status { margin: 0 0 10px; }
 
 /* ---- landing */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 24px; }
@@ -234,8 +240,6 @@ body.showcase main.stage { max-width: 1200px; padding-bottom: 110px; }
   header.top { padding: 12px 16px; }
   nav a { margin-left: 12px; }
   .form-grid { grid-template-columns: 1fr; }
-  .q-head { flex-direction: column; gap: 0; }
-  .q-head .q-image { max-width: 100%; }
   .versus .score { font-size: 2.6rem; }
   .nl { margin: 10px 24px 0; }
   .nl-marker .label { font-size: .85rem; }

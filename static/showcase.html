@@ -58,7 +58,8 @@
       const g = state.game;
       const v = $("view");
       line = null;
-      v.classList.remove("revealing");
+      // Question and reveal: the picture fills the height that is left on the screen.
+      v.classList.toggle("asking", g.phase === "question" || g.phase === "reveal");
       if (g.phase === "lobby_one") {
         v.innerHTML = `
           <p class="kicker">Steg 1 · ${esc(g.oneName)}</p>
@@ -125,7 +126,6 @@
       } else if (g.phase === "reveal") {
         $("q-status").innerHTML = "";
         $("reveal").hidden = false;
-        $("view").classList.add("revealing"); // smaller picture, to make room for the number line
         updateReveal();
       }
     }
