@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS questions (
     text       TEXT    NOT NULL,
     answer     REAL    NOT NULL,
     unit       TEXT    NOT NULL DEFAULT '',
+    position   INTEGER NOT NULL DEFAULT 0,      -- order in the quiz (lowest first)
     created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS games (
@@ -112,6 +113,7 @@ HOST_PASSWORD = os.environ.get("HOST_PASSWORD", "honestmistake")
 HOST_PAGES = {"/create.html", "/showcase.html"}
 HOST_API = {"/api/game", "/api/game/next", "/api/links"}  # plus /api/questions… and /api/image/…
 LAST_REVEAL_STEP = 3
+QUESTION_ORDER = "position, id"  # SQL ORDER BY for the saved questions (the order they are played in)
 
 # Pictures for questions. No SVG: it can contain scripts.
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
@@ -209,8 +211,15 @@ def init_db():
                     db.execute(f"ALTER TABLE {table} RENAME TO {table}_v1")
             db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         db.executescript(SCHEMA)
+        columns = {r[1] for r in db.execute("PRAGMA table_info(questions)")}
+        if "position" not in columns:
+            # Added after version 2: questions get an order the host can change.
+            # Existing questions keep their old order (by id).
+            db.execute("ALTER TABLE questions ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
+            db.execute("UPDATE questions SET position = id")
         if db.execute("SELECT COUNT(*) FROM questions").fetchone()[0] == 0:
-            db.executemany("INSERT INTO questions (text, answer, unit) VALUES (?, ?, ?)", SEED_QUESTIONS)
+            db.executemany("INSERT INTO questions (text, answer, unit, position) VALUES (?, ?, ?, ?)",
+                           [(*q, i) for i, q in enumerate(SEED_QUESTIONS, 1)])
         if db.execute("SELECT COUNT(*) FROM games").fetchone()[0] == 0:
             db.execute("INSERT INTO games (one_name, one_token) VALUES (?, ?)", (SOLO_NAME, new_token()))
 
@@ -297,8 +306,26 @@ def question_dict(row):
 
 @app.get("/api/questions")
 def list_questions():
-    rows = get_db().execute("SELECT * FROM questions ORDER BY id").fetchall()
+    rows = get_db().execute(f"SELECT * FROM questions ORDER BY {QUESTION_ORDER}").fetchall()
     return jsonify([question_dict(r) for r in rows])
+
+
+@app.put("/api/questions/order")
+def reorder_questions():
+    """Set the order of the questions. The body is the list of all question
+    ids, in the new order."""
+    ids = request.get_json(silent=True)
+    if not isinstance(ids, list) or not all(type(i) is int for i in ids):
+        abort(400, "Forventet en liste med spørsmåls-id-er")
+    db = get_db()
+    existing = {r["id"] for r in db.execute("SELECT id FROM questions")}
+    if len(ids) != len(set(ids)) or set(ids) != existing:
+        abort(409, "Spørsmålene er endret i mellomtiden – last siden på nytt")
+    db.executemany("UPDATE questions SET position = ? WHERE id = ?",
+                   [(pos, qid) for pos, qid in enumerate(ids, 1)])
+    db.commit()
+    notifier.bump()
+    return "", 204
 
 
 @app.post("/api/questions")
@@ -312,7 +339,11 @@ def create_question():
     if answer is None:
         abort(400, "Svaret må være et tall")
     db = get_db()
-    cur = db.execute("INSERT INTO questions (text, answer, unit) VALUES (?, ?, ?)", (text, answer, unit))
+    cur = db.execute(
+        "INSERT INTO questions (text, answer, unit, position) "
+        "VALUES (?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM questions))",
+        (text, answer, unit),
+    )
     db.commit()
     notifier.bump()
     row = db.execute("SELECT * FROM questions WHERE id = ?", (cur.lastrowid,)).fetchone()
@@ -405,7 +436,7 @@ def next_step():
     if phase == "lobby_one":
         phase = "lobby"
     elif phase == "lobby":
-        ids = [r["id"] for r in db.execute("SELECT id FROM questions ORDER BY id")]
+        ids = [r["id"] for r in db.execute(f"SELECT id FROM questions ORDER BY {QUESTION_ORDER}")]
         if not ids:
             abort(400, "Lag noen spørsmål først")
         phase, idx, step, question_ids = "question", 0, 0, json.dumps(ids)

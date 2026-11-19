@@ -36,7 +36,8 @@
     </form>
 
     <h2>Lagrede spørsmål (<span id="q-count">0</span>)</h2>
-    <p class="muted">Endringer gjelder fra neste spill du starter — et pågående spill beholder spørsmålene sine.</p>
+    <p class="muted">Spørsmålene stilles i denne rekkefølgen; bruk pilene for å flytte dem.
+      Endringer gjelder fra neste spill du starter — et pågående spill beholder spørsmålene sine.</p>
     <div id="q-list"></div>
     <input type="file" id="item-image" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
   </main>
@@ -134,11 +135,32 @@
       loadQuestions();
     };
 
+    // Moves question number `from` (0-based) to `to` and saves the new order.
+    let questions = [];
+    async function moveQuestion(from, to) {
+      if (to < 0 || to >= questions.length) return;
+      const ids = questions.map((q) => q.id);
+      ids.splice(to, 0, ids.splice(from, 1)[0]);
+      try {
+        await api("/api/questions/order", { method: "PUT", body: ids });
+      } catch (err) {
+        alert(err.message);
+      }
+      await loadQuestions();
+      document.querySelector(`#q-list [data-move="${to}"][data-dir="${to > from ? 1 : -1}"]`)?.focus();
+    }
+
     async function loadQuestions() {
-      const qs = await api("/api/questions");
+      const qs = questions = await api("/api/questions");
       $("q-count").textContent = qs.length;
       $("q-list").innerHTML = qs.map((q, i) => `
         <div class="card q-item">
+          <div class="q-move">
+            <button class="secondary small" data-move="${i}" data-dir="-1" title="Flytt opp"
+              aria-label="Flytt spørsmål ${i + 1} opp" ${i === 0 ? "disabled" : ""}>▲</button>
+            <button class="secondary small" data-move="${i}" data-dir="1" title="Flytt ned"
+              aria-label="Flytt spørsmål ${i + 1} ned" ${i === qs.length - 1 ? "disabled" : ""}>▼</button>
+          </div>
           ${q.image ? `<img class="q-thumb" src="${esc(q.image)}" alt="">` : ""}
           <div class="q-body">
             <strong>${i + 1}. ${esc(q.text)}</strong>
@@ -155,6 +177,12 @@
           if (!confirm("Slette dette spørsmålet?")) return;
           await api(`/api/questions/${b.dataset.id}`, { method: "DELETE" });
           loadQuestions();
+        };
+      });
+      document.querySelectorAll("#q-list button[data-move]").forEach((b) => {
+        b.onclick = () => {
+          const from = Number(b.dataset.move);
+          moveQuestion(from, from + Number(b.dataset.dir));
         };
       });
       document.querySelectorAll("#q-list button[data-image]").forEach((b) => {

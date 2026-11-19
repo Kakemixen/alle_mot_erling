@@ -114,6 +114,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* ---- create page */
 .q-item { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .q-item .q-body { flex: 1; }
+.q-move { display: flex; flex-direction: column; gap: 4px; }
+.q-move button { padding: 4px 10px; line-height: 1; }
 .q-thumb { display: block; width: 96px; height: 72px; object-fit: cover; border-radius: 8px; background: var(--bg-2); }
 #q-preview { margin-top: 10px; }
 input[type="file"] { color: var(--muted); }
